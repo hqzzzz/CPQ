@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { LayoutDashboard, Layers, FileText, Settings, Database, HardDrive, Tags, LogOut, Factory, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Layers, FileText, Settings, Database, HardDrive, Tags, LogOut, Factory, FileSpreadsheet, Tag, Home } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { ResourceKey } from '../types';
@@ -7,11 +8,12 @@ import { ResourceKey } from '../types';
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout, hasPermission } = useStore();
+  const { currentUser, logout, hasPermission, roles } = useStore();
 
   const allNavItems: { icon: any, label: string, path: string, resource: ResourceKey }[] = [
-    { icon: LayoutDashboard, label: '仪表盘', path: '/', resource: 'dashboard' },
-    { icon: Tags, label: '产品层级管理', path: '/types', resource: 'types' },
+    { icon: LayoutDashboard, label: '仪表盘', path: '/dashboard', resource: 'dashboard' },
+    { icon: Tags, label: '产品类型定义', path: '/types', resource: 'types' },
+    { icon: Tag, label: '业务分类管理', path: '/categories', resource: 'categories' },
     { icon: Database, label: '产品库管理', path: '/products', resource: 'products' },
     { icon: Layers, label: 'BOM 构建', path: '/bom', resource: 'bom' },
     { icon: FileText, label: '智能报价', path: '/quotes', resource: 'quotes' },
@@ -28,17 +30,19 @@ const Sidebar = () => {
   // Permission Logic using granular checks
   const navItems = allNavItems.filter(item => {
       // Dashboard is typically always visible to logged in users, or explicit permission
-      if (item.path === '/') return true; 
+      if (item.path === '/dashboard') return true; 
       // If resource check fails, hide it
       return hasPermission(item.resource, 'view');
   });
 
+  const currentRoleName = currentUser ? roles.find(r => r.id === currentUser.role)?.name : '';
+
   return (
     <div className="w-64 bg-slate-900 text-white flex flex-col h-screen fixed left-0 top-0 shadow-xl z-50">
       <div className="p-6 border-b border-slate-700 flex items-center gap-3">
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+        <Link to="/" className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center hover:bg-blue-400 transition-colors">
           <Settings className="w-5 h-5 text-white" />
-        </div>
+        </Link>
         <div>
           <h1 className="text-lg font-bold tracking-tight">CloudCPQ</h1>
           <p className="text-xs text-slate-400">企业版 V2.0</p>
@@ -71,11 +75,11 @@ const Sidebar = () => {
                 <img src={currentUser?.avatar || "https://picsum.photos/40/40"} alt="User" className="w-10 h-10 rounded-full border-2 border-slate-600" />
                 <div className="overflow-hidden">
                     <p className="text-sm font-semibold text-white truncate">{currentUser?.name}</p>
-                    <p className="text-xs text-slate-400 truncate">{currentUser?.title}</p>
+                    <p className="text-xs text-slate-400 truncate">{currentUser?.title || `@${currentUser?.username}`}</p>
                 </div>
             </div>
             <div className="text-[10px] bg-slate-900 text-slate-400 px-2 py-1 rounded border border-slate-700 text-center uppercase">
-                {currentUser?.role}
+                {currentRoleName || 'Guest'}
             </div>
         </div>
         <button 

@@ -14,7 +14,7 @@ interface ProductEditModalProps {
 }
 
 const ProductEditModal: React.FC<ProductEditModalProps> = ({ isOpen, onClose, productToEdit, onSave }) => {
-    const { products, types, productBoms, currentUser } = useStore();
+    const { products, types, categories, productBoms, currentUser } = useStore();
     const [activeTab, setActiveTab] = useState<'basic' | 'bom' | 'gallery' | 'docs'>('basic');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -447,13 +447,19 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ isOpen, onClose, pr
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">产品分类</label>
-                        <input 
-                            type="text" 
-                            className="w-full p-2 border border-slate-300 rounded-lg"
+                        <label className="block text-sm font-medium text-slate-700 mb-1">产品分类 (业务分组)</label>
+                        <select
+                            className="w-full p-2 border border-slate-300 rounded-lg bg-white"
                             value={formData.category || ''}
                             onChange={e => setFormData({...formData, category: e.target.value})}
-                        />
+                        >
+                            <option value="">-- 请选择 --</option>
+                            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            {/* Fallback for legacy data that might not match current categories */}
+                            {formData.category && !categories.some(c => c.name === formData.category) && (
+                                <option value={formData.category}>{formData.category} (Legacy)</option>
+                            )}
+                        </select>
                         </div>
                         <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">库存数量</label>

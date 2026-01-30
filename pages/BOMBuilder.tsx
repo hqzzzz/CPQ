@@ -1,31 +1,36 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { Product, BOMStructure, BOMItem } from '../types';
-import { Layout, Search, Plus, Trash2, ChevronRight, ChevronDown, Layers, Save, FileText, CornerDownRight, X, AlertCircle, Box, DollarSign, CheckCircle } from 'lucide-react';
+import { Layout, Search, Plus, Trash2, ChevronRight, ChevronDown, Layers, Save, FileText, CornerDownRight, X, AlertCircle, Box, DollarSign, CheckCircle, Filter, Image as ImageIcon } from 'lucide-react';
 import { CreateBOMModal } from '../components/bom/BOMModals';
 
 const BOMBuilder = () => {
-  const { products, boms, updateBOM, addBOM, deleteBOM, currentUser } = useStore();
+  const { products, boms, categories, updateBOM, addBOM, deleteBOM, currentUser } = useStore();
   const [selectedBOMId, setSelectedBOMId] = useState<number | ''>(''); 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
   
   // Add Item State
   const [targetParentId, setTargetParentId] = useState<number | null>(null);
   const [newProductId, setNewProductId] = useState<number | ''>('');
   const [newQuantity, setNewQuantity] = useState(1);
 
-  // Local state for metadata form to allow editing without immediate save, and to handle "Save" button logic
-  const [metaForm, setMetaForm] = useState({ specifications: '', category: '', description: '' });
+  // Local state for metadata form including baseImage
+  const [metaForm, setMetaForm] = useState({ specifications: '', category: '', description: '', baseImage: '' });
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canViewCost = currentUser?.role !== 2; // Sales role ID is 2
 
   // Filter Auxiliary BOMs
-  const filteredBoms = boms.filter(b => 
-      !searchTerm || b.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBoms = boms.filter(b => {
+      const matchesSearch = !searchTerm || b.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = !filterCategory || b.category === filterCategory;
+      return matchesSearch && matchesCategory;
+  });
 
   // Get current BOM object and its items
   const activeBOM = boms.find(b => b.id === selectedBOMId);
@@ -37,7 +42,8 @@ const BOMBuilder = () => {
           setMetaForm({
               specifications: activeBOM.specifications || '',
               category: activeBOM.category || '',
-              description: activeBOM.description || ''
+              description: activeBOM.description || '',
+              baseImage: activeBOM.baseImage || ''
           });
       }
   }, [activeBOM?.id]);
@@ -64,21 +70,22 @@ const BOMBuilder = () => {
       ? (targetParentProduct ? targetParentProduct.name : `已删组件 (ID:${targetParentItem.productId})`) 
       : '根节点 (Top Level)';
 
-  const calculateRollup = (items: BOMItem[]): number => {
+  const calculateRollup = (items: BOMItem[], field: 'cost' | 'basePrice'): number => {
     let total = 0;
     items.forEach(item => {
       const p = products.find(prod => prod.id === item.productId);
       if (p) {
-        total += p.cost * item.quantity;
+        total += (p[field] || 0) * item.quantity;
       }
       if (item.children) {
-          total += calculateRollup(item.children);
+          total += calculateRollup(item.children, field);
       }
     });
     return total;
   };
 
-  const totalBOMCost = calculateRollup(currentItems);
+  const totalBOMCost = calculateRollup(currentItems, 'cost');
+  const totalBOMBasePrice = calculateRollup(currentItems, 'basePrice');
 
   // --- Tree Manipulation Logic ---
 
@@ -122,7 +129,8 @@ const BOMBuilder = () => {
           items: newItems || activeBOM.items,
           specifications: metaForm.specifications,
           category: metaForm.category,
-          description: metaForm.description
+          description: metaForm.description,
+          baseImage: metaForm.baseImage
       });
   };
 
@@ -132,6 +140,18 @@ const BOMBuilder = () => {
       saveBOM();
       setShowSaveSuccess(true);
       setTimeout(() => setShowSaveSuccess(false), 2000);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              const base64 = reader.result as string;
+              setMetaForm(prev => ({ ...prev, baseImage: base64 }));
+          };
+          reader.readAsDataURL(file);
+      }
   };
 
   const handleAddItem = () => {
@@ -206,13 +226,24 @@ const BOMBuilder = () => {
               管理可独立引用的辅助 BOM 模板，用于快速报价组合。
           </p>
         </div>
-        {canViewCost && selectedBOMId && (
-          <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-            <span className="text-sm text-slate-500">预计总成本:</span>
-            <span className="text-xl font-bold text-emerald-600 flex items-center">
-              <DollarSign className="w-5 h-5" />
-              {totalBOMCost.toLocaleString()}
-            </span>
+        {selectedBOMId && (
+          <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-6">
+            {canViewCost && (
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 uppercase font-bold">成本合计:</span>
+                    <span className="text-lg font-bold text-slate-600 flex items-center">
+                        <DollarSign className="w-4 h-4" />
+                        {totalBOMCost.toLocaleString()}
+                    </span>
+                </div>
+            )}
+            <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 uppercase font-bold">基准价合计:</span>
+                <span className="text-xl font-bold text-blue-600 flex items-center">
+                    <DollarSign className="w-5 h-5" />
+                    {totalBOMBasePrice.toLocaleString()}
+                </span>
+            </div>
           </div>
         )}
       </div>
@@ -225,15 +256,35 @@ const BOMBuilder = () => {
               配置列表
           </div>
 
-          <div className="relative mb-3">
-              <input 
-                  type="text" 
-                  placeholder="搜索模板..."
-                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-              />
-              <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+          <div className="space-y-3 mb-3">
+              <div className="relative">
+                  <input 
+                      type="text" 
+                      placeholder="搜索模板..."
+                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                  />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+              </div>
+              <div className="relative">
+                  <select
+                      className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-600 appearance-none"
+                      value={filterCategory}
+                      onChange={e => setFilterCategory(e.target.value)}
+                  >
+                      <option value="">所有分类</option>
+                      {categories.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                      {/* Handle distinct categories already in BOMs that might not be in the master list if deleted */}
+                      {[...new Set(boms.map(b => b.category).filter(c => c && !categories.some(cat => cat.name === c)))].map(c => (
+                           <option key={c as string} value={c as string}>{c as string} (Legacy)</option>
+                      ))}
+                  </select>
+                  <Filter className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+              </div>
           </div>
 
           <div className="space-y-2 flex-1 overflow-y-auto pr-1 min-h-0 max-h-[600px]">
@@ -270,7 +321,7 @@ const BOMBuilder = () => {
             {filteredBoms.length === 0 && (
                 <div className="text-center py-12 text-slate-400 text-sm flex flex-col items-center">
                     <Layers className="w-8 h-8 mb-2 opacity-20" />
-                    暂无辅助 BOM 配置
+                    {boms.length === 0 ? '暂无辅助 BOM 配置' : '未找到匹配的模板'}
                 </div>
             )}
           </div>
@@ -290,14 +341,29 @@ const BOMBuilder = () => {
                    {/* Header */}
                    <div className="p-4 border-b border-slate-200 bg-slate-50/50">
                        <div className="flex justify-between items-center mb-4">
-                           <div className="flex items-center gap-3">
-                               <FileText className="w-6 h-6 text-blue-600" />
+                           <div className="flex items-center gap-4">
+                               {/* Image Uploader */}
+                               <div 
+                                   className="w-16 h-16 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center cursor-pointer overflow-hidden group relative"
+                                   onClick={() => fileInputRef.current?.click()}
+                               >
+                                   {metaForm.baseImage ? (
+                                       <img src={metaForm.baseImage} className="w-full h-full object-cover" alt="BOM" />
+                                   ) : (
+                                       <ImageIcon className="w-8 h-8 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                   )}
+                                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 flex items-center justify-center transition-colors">
+                                        <span className="opacity-0 group-hover:opacity-100 text-[10px] text-white font-medium bg-black/50 px-1 rounded">更换</span>
+                                   </div>
+                               </div>
+                               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+
                                <div>
                                    <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
                                        {activeBOM.name}
                                        <span className="text-[10px] px-2 py-0.5 rounded border bg-blue-100 text-blue-700 border-blue-200">BOM配单</span>
                                    </div>
-                                   <div className="text-xs text-slate-500 font-mono">TEMPLATE-ID-{activeBOM.id}</div>
+                                   <div className="text-xs text-slate-500 font-mono mt-1">TEMPLATE-ID-{activeBOM.id}</div>
                                </div>
                            </div>
                            
@@ -317,20 +383,24 @@ const BOMBuilder = () => {
                               <input 
                                   type="text" 
                                   className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white"
-                                  placeholder="规格查询库"
+                                  placeholder="例如: 2024款-高配版"
                                   value={metaForm.specifications}
                                   onChange={(e) => setMetaForm(prev => ({...prev, specifications: e.target.value}))}
                               />
                           </div>
                           <div>
-                              <label className="text-xs font-semibold text-slate-500 mb-1 block">分类</label>
-                              <input 
-                                  type="text" 
+                              <label className="text-xs font-semibold text-slate-500 mb-1 block">业务分类</label>
+                              <select 
                                   className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white"
-                                  placeholder="分类决定报价归类"
                                   value={metaForm.category}
                                   onChange={(e) => setMetaForm(prev => ({...prev, category: e.target.value}))}
-                              />
+                              >
+                                  <option value="">-- 请选择 --</option>
+                                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                  {metaForm.category && !categories.some(c => c.name === metaForm.category) && (
+                                      <option value={metaForm.category}>{metaForm.category} (Legacy)</option>
+                                  )}
+                              </select>
                           </div>
                           <div>
                                <label className="text-xs font-semibold text-slate-500 mb-1 block">详细描述</label>
@@ -398,14 +468,16 @@ const BOMBuilder = () => {
                                    <th className="px-4 py-3 font-medium text-slate-600">编码</th>
                                    <th className="px-4 py-3 font-medium text-slate-600 text-center">数量</th>
                                    {canViewCost && <th className="px-4 py-3 font-medium text-slate-600 text-right">单价(成本)</th>}
-                                   {canViewCost && <th className="px-4 py-3 font-medium text-slate-600 text-right">小计</th>}
+                                   <th className="px-4 py-3 font-medium text-slate-600 text-right">单价(基准)</th>
+                                   {canViewCost && <th className="px-4 py-3 font-medium text-slate-600 text-right">小计(成本)</th>}
+                                   <th className="px-4 py-3 font-medium text-slate-600 text-right">小计(基准)</th>
                                    <th className="px-4 py-3 font-medium text-slate-600 text-right">操作</th>
                                </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-100">
                                {flatList.length === 0 ? (
                                    <tr>
-                                       <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                                       <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                                            <div className="flex flex-col items-center">
                                                <Layers className="w-8 h-8 mb-2 opacity-20" />
                                                暂无组件，请在上方添加。
@@ -415,7 +487,8 @@ const BOMBuilder = () => {
                                ) : (
                                    flatList.map(({ item, level }) => {
                                        const product = getProduct(item.productId);
-                                       const subtotal = product ? product.cost * item.quantity : 0;
+                                       const subtotalCost = product ? product.cost * item.quantity : 0;
+                                       const subtotalBase = product ? (product.basePrice || 0) * item.quantity : 0;
                                        const isTarget = targetParentId === item.id;
 
                                        return (
@@ -452,15 +525,21 @@ const BOMBuilder = () => {
                                                    />
                                                </td>
                                                {canViewCost && (
-                                                   <td className="px-4 py-3 text-right text-slate-600">
+                                                   <td className="px-4 py-3 text-right text-slate-500 font-mono text-xs">
                                                        {product ? `¥${product.cost.toLocaleString()}` : '-'}
                                                    </td>
                                                )}
+                                               <td className="px-4 py-3 text-right text-blue-600 font-mono text-xs font-medium">
+                                                   {product ? `¥${(product.basePrice || 0).toLocaleString()}` : '-'}
+                                               </td>
                                                {canViewCost && (
-                                                   <td className="px-4 py-3 text-right font-medium text-slate-800">
-                                                       {product ? `¥${subtotal.toLocaleString()}` : '-'}
+                                                   <td className="px-4 py-3 text-right font-medium text-slate-600">
+                                                       {product ? `¥${subtotalCost.toLocaleString()}` : '-'}
                                                    </td>
                                                )}
+                                               <td className="px-4 py-3 text-right font-bold text-blue-700">
+                                                   {product ? `¥${subtotalBase.toLocaleString()}` : '-'}
+                                               </td>
                                                <td className="px-4 py-3 text-right">
                                                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                        {product && (

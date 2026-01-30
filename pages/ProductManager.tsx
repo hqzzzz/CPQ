@@ -266,7 +266,7 @@ const ProductManager = () => {
                         <FilterHeader label="类型" fieldKey="type" columnFilters={columnFilters} setColumnFilters={setColumnFilters} activeFilterCol={activeFilterCol} setActiveFilterCol={setActiveFilterCol} />
                     </th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <FilterHeader label="分类" fieldKey="category" columnFilters={columnFilters} setColumnFilters={setColumnFilters} activeFilterCol={activeFilterCol} setActiveFilterCol={setActiveFilterCol} />
+                        <FilterHeader label="子类" fieldKey="category" columnFilters={columnFilters} setColumnFilters={setColumnFilters} activeFilterCol={activeFilterCol} setActiveFilterCol={setActiveFilterCol} />
                     </th>
                     {canViewCost && (
                       <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">

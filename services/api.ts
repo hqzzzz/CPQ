@@ -1,11 +1,16 @@
 
-import { Product, ProductTypeDefinition, BOMStructure, ProductBOM, Quote, User, RoleDefinition, TemplateSettings, ProductDocument, BOMItem, QuoteStatusLog } from '../types';
+import { Product, ProductTypeDefinition, BOMStructure, ProductBOM, Quote, User, RoleDefinition, TemplateSettings, ProductDocument, BOMItem, QuoteStatusLog, ProductCategory, AuthProvider } from '../types';
 
 // Helper to get config
 const getConfig = () => {
     const saved = localStorage.getItem('cpq_api_config');
-    // Default config. In a real app, you might redirect to settings if missing.
-    return saved ? JSON.parse(saved) : { baseUrl: '', apiKey: '', timeout: 10000 };
+    const config = saved ? JSON.parse(saved) : {};
+    // 默认连接本地后端，防止首次启动报错
+    return { 
+        baseUrl: config.baseUrl || 'http://localhost:3002/api', 
+        apiKey: config.apiKey || '', 
+        timeout: config.timeout || 10000 
+    };
 };
 
 class ApiService {
@@ -22,7 +27,6 @@ class ApiService {
         const { baseUrl, timeout } = getConfig();
         
         if (!baseUrl) {
-            // Throw specific error to be caught by UI to show setup prompt
             throw new Error("API_NOT_CONFIGURED");
         }
 
@@ -52,7 +56,13 @@ class ApiService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`API Request Failed (${response.status}): ${errorText || response.statusText}`);
+                // Parse JSON error if possible
+                let errMsg = errorText;
+                try {
+                    const jsonErr = JSON.parse(errorText);
+                    if (jsonErr.message) errMsg = jsonErr.message;
+                } catch(e) {}
+                throw new Error(`API Request Failed (${response.status}): ${errMsg || response.statusText}`);
             }
 
             // Handle 204 No Content
@@ -74,16 +84,33 @@ class ApiService {
         }
     }
 
+    // --- Authentication ---
+    async getOAuthUrl(provider: AuthProvider) {
+        return (await this.request<{success: boolean, url: string}>(`/auth/${provider}/url`));
+    }
+
+    async loginWithOAuth(provider: AuthProvider, code: string) {
+        return (await this.request<{success: boolean, data: User}>('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ provider, code })
+        })).data;
+    }
+
+    async register(user: Partial<User>) {
+        return await this.request<{success: boolean, message: string}>('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(user)
+        });
+    }
+
     // --- Files ---
     async uploadFile(file: File, id?: number): Promise<ProductDocument> {
         const formData = new FormData();
-        // Append ID first so it is available in req.body before the file stream is fully processed by some middlewares
         if (id) {
             formData.append('id', String(id));
         }
         formData.append('file', file);
         
-        // Backend returns: { success: true, data: ProductDocument }
         const res = await this.request<{ success: boolean, data: ProductDocument }>('/upload', {
             method: 'POST',
             body: formData
@@ -103,6 +130,12 @@ class ApiService {
     async updateType(t: ProductTypeDefinition) { return (await this.request<{success:boolean, data: ProductTypeDefinition}>(`/types/${t.id}`, { method: 'PUT', body: JSON.stringify(t) })).data; }
     async deleteType(id: string) { return this.request<void>(`/types/${id}`, { method: 'DELETE' }); }
 
+    // --- Categories ---
+    async getCategories() { return (await this.request<{success:boolean, data: ProductCategory[]}>('/categories')).data; }
+    async createCategory(c: ProductCategory) { return (await this.request<{success:boolean, data: ProductCategory}>('/categories', { method: 'POST', body: JSON.stringify(c) })).data; }
+    async deleteCategory(id: string) { return this.request<void>(`/categories/${id}`, { method: 'DELETE' }); }
+    async reorderCategories(categories: ProductCategory[]) { return this.request<void>('/categories/reorder', { method: 'PUT', body: JSON.stringify(categories) }); }
+
     // --- Auxiliary BOMs (Standalone) ---
     async getBOMs() { return (await this.request<{success:boolean, data: BOMStructure[]}>('/boms')).data; }
     async createBOM(b: BOMStructure) { return (await this.request<{success:boolean, data: BOMStructure}>('/boms', { method: 'POST', body: JSON.stringify(b) })).data; }
@@ -121,7 +154,7 @@ class ApiService {
 
     // --- Users & Roles ---
     async getUsers() { return (await this.request<{success:boolean, data: User[]}>('/users')).data; }
-    async createUser(u: User) { return (await this.request<{success:boolean, data: User}>('/users', { method: 'POST', body: JSON.stringify(u) })).data; }
+    async createUser(u: Partial<User>) { return (await this.request<{success:boolean, data: User}>('/users', { method: 'POST', body: JSON.stringify(u) })).data; }
     async updateUser(u: User) { return (await this.request<{success:boolean, data: User}>(`/users/${u.id}`, { method: 'PUT', body: JSON.stringify(u) })).data; }
     async deleteUser(id: string) { return this.request<void>(`/users/${id}`, { method: 'DELETE' }); }
 
@@ -136,7 +169,7 @@ class ApiService {
 
     async testConnection() {
         try {
-            await this.request('/types');
+            await this.request('/test-connection');
             return { success: true, message: '连接成功 (REST API)' };
         } catch (e: any) {
             return { success: false, message: e.message || '连接失败' };

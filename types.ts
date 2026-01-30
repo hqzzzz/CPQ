@@ -7,6 +7,13 @@ export interface ProductTypeDefinition {
   color: string; // UI 显示颜色 (Badge Color)
 }
 
+// Product Category (产品分类 - 业务属性分类)
+export interface ProductCategory {
+  id: number;
+  name: string;
+  sortOrder?: number; // 排序权重
+}
+
 // Product Document (产品文档/附件)
 export interface ProductDocument {
   id: string | number; // 文档唯一标识 (ID, support both numeric and UUID)
@@ -30,7 +37,7 @@ export interface Product {
   
   basePrice: number;    // 基准销售价 (Base Selling Price)
   inventory: number;    // 库存数量 (Inventory Count)
-  category: string;     // 产品子分类 (Sub-category, e.g., 电子, 结构)
+  category: string;     // 产品子分类 (Sub-category, e.g., 电子, 结构) - 存储名称
   
   baseImage?: string;   // 产品主图 (Main Image, Base64 or URL)
   
@@ -53,7 +60,8 @@ export interface BOMStructure {
   items: BOMItem[];       // 顶层子项列表 (Top-level Items)
   specifications?: string; // 规格型号 (Technical Specifications)
   description?: string;    // 详细描述 (Detailed Description)
-  category?: string;       // 分类 (Subclass / Category)
+  category?: string;       // 子类/分类 (Subclass / Category)
+  baseImage?: string;      // BOM 基础图片 (Base Image)
 }
 
 // Product BOM (产品绑定 BOM) - Table: product_boms
@@ -115,7 +123,7 @@ export interface TemplateSettings {
 
 // --- Auth & Permission Types (权限与认证类型) ---
 
-export type ResourceKey = 'dashboard' | 'products' | 'types' | 'bom' | 'quotes' | 'production' | 'templates' | 'users' | 'settings';
+export type ResourceKey = 'dashboard' | 'products' | 'types' | 'categories' | 'bom' | 'quotes' | 'production' | 'templates' | 'users' | 'settings';
 export type ActionKey = 'view' | 'create' | 'edit' | 'delete' | 'view_cost' | 'export';
 
 export interface Permission {

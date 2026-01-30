@@ -70,7 +70,7 @@ const TypeManager = () => {
     <div className="h-full flex flex-col relative">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">产品层级管理</h2>
+          <h2 className="text-2xl font-bold text-slate-800">产品类型与层级</h2>
           <p className="text-slate-500">定义产品的分类及BOM构建时的层级逻辑。</p>
         </div>
         <button 

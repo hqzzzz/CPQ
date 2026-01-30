@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Users, Plus, Lock, Edit2, Trash2, User as UserIcon, X, Briefcase, Mail, Key } from 'lucide-react';
 import { useStore } from '../../store';
 import { User } from '../../types';
+import md5 from 'md5';
 
 const UserManagement = () => {
     const { currentUser, users, roles, addUser, updateUser, deleteUser } = useStore();
@@ -55,7 +56,11 @@ const UserManagement = () => {
             updateUser(editingUser);
         } else {
             if (editingUser.authProvider === 'local' && !editingUser.password) {
-                editingUser.password = '123456'; 
+                // Default hash for '123456'
+                editingUser.password = md5('123456'); 
+            } else if (editingUser.authProvider === 'local' && editingUser.password) {
+                // Hash provided password
+                editingUser.password = md5(editingUser.password);
             }
             addUser(editingUser);
         }

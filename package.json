@@ -18,7 +18,9 @@
     "xlsx": "latest",
     "exceljs": "^4.4.0",
     "html2canvas": "1.4.1",
-    "jspdf": "2.5.1"
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "^3.8.1",
+    "md5": "^2.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

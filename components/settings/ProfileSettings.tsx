@@ -1,6 +1,8 @@
+
 import React, { useState, useRef } from 'react';
 import { Camera, Lock, Shield } from 'lucide-react';
 import { useStore } from '../../store';
+import md5 from 'md5';
 
 const ProfileSettings = () => {
     const { currentUser, updateUser, roles, changePassword } = useStore();
@@ -21,7 +23,7 @@ const ProfileSettings = () => {
         }
     };
 
-    const handleChangePassword = (e: React.FormEvent) => {
+    const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (pwdForm.new !== pwdForm.confirm) {
             setPwdMsg({ type: 'error', text: '两次输入的新密码不一致' });
@@ -32,7 +34,10 @@ const ProfileSettings = () => {
             return;
         }
 
-        const result = changePassword(currentUser.id, pwdForm.old, pwdForm.new);
+        const oldHash = md5(pwdForm.old);
+        const newHash = md5(pwdForm.new);
+
+        const result = await changePassword(currentUser.id, oldHash, newHash);
         if (result.success) {
             setPwdMsg({ type: 'success', text: '密码修改成功' });
             setPwdForm({ old: '', new: '', confirm: '' });
