@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { ProductTypeDefinition } from '../types';
@@ -10,7 +11,6 @@ const TypeManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<ProductTypeDefinition | null>(null);
   
-  // State for Custom Delete Confirmation Modal
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
       isOpen: boolean;
       type: ProductTypeDefinition | null;
@@ -21,7 +21,6 @@ const TypeManager = () => {
       usageCount: 0
   });
 
-  // Sort types by level (1 -> 4)
   const sortedTypes = [...types].sort((a, b) => a.level - b.level);
 
   const handleOpenModal = (type?: ProductTypeDefinition) => {
@@ -34,18 +33,17 @@ const TypeManager = () => {
       updateType({ ...editingType, ...formData } as ProductTypeDefinition);
     } else {
       addType({
-        id: `t-${Date.now()}`,
+        id: Date.now(), // Numeric ID
         name: formData.name!,
         level: formData.level || 3,
-        color: formData.color || 'blue'
+        color: formData.color || '#3b82f6'
       });
     }
     setIsModalOpen(false);
   };
 
-  // Step 1: Request Delete - Opens the custom modal
   const requestDelete = (type: ProductTypeDefinition) => {
-    const usageCount = products.filter(p => p.type === type.name).length;
+    const usageCount = products.filter(p => p.type === type.id).length;
     setDeleteConfirmation({
         isOpen: true,
         type,
@@ -53,7 +51,6 @@ const TypeManager = () => {
     });
   };
 
-  // Step 2: Confirm Delete - Executes the action
   const executeDelete = () => {
       if (deleteConfirmation.type) {
           deleteType(deleteConfirmation.type.id);
@@ -73,7 +70,7 @@ const TypeManager = () => {
     <div className="h-full flex flex-col relative">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">产品类型与层级</h2>
+          <h2 className="text-2xl font-bold text-slate-800">产品层级管理</h2>
           <p className="text-slate-500">定义产品的分类及BOM构建时的层级逻辑。</p>
         </div>
         <button 
@@ -90,7 +87,7 @@ const TypeManager = () => {
           <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">层级逻辑说明 (Level Logic):</p>
               <ul className="list-disc pl-4 space-y-1">
-                  <li><strong>Level 1 (销售层别):</strong> 面向客户的销售套餐或解决方案，BOM 的根节点。</li>
+                  <li><strong>Level 1 (销售层):</strong> 面向客户的销售套餐或解决方案，BOM 的根节点。</li>
                   <li><strong>Level 2 (成品层):</strong> 生产完成的最终产品。</li>
                   <li><strong>Level 3 (中间层):</strong> 组件或半成品。</li>
                   <li><strong>Level 4 (基础层):</strong> 基础零件或原材料，不可再分。</li>
@@ -111,16 +108,19 @@ const TypeManager = () => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {sortedTypes.map((type) => {
-               const usageCount = products.filter(p => p.type === type.name).length;
+               const usageCount = products.filter(p => p.type === type.id).length;
                
                return (
                 <tr key={type.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 font-medium text-slate-800">{type.name}</td>
                     <td className="px-6 py-4">{getLevelBadge(type.level)}</td>
                     <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded-full bg-${type.color}-500`}></div>
-                            <span className="text-sm text-slate-600 capitalize">{type.color}</span>
+                        <div className="flex items-center gap-3">
+                            <div 
+                                className="w-6 h-6 rounded-md border border-slate-200 shadow-sm"
+                                style={{ backgroundColor: type.color }}
+                            ></div>
+                            <span className="text-sm text-slate-600 font-mono uppercase">{type.color}</span>
                         </div>
                     </td>
                     <td className="px-6 py-4 text-right">

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Shield, Plus, Edit2, Trash2, X, Check } from 'lucide-react';
 import { useStore } from '../../store';
@@ -31,7 +32,7 @@ const RoleManagement = () => {
 
     const handleAddRole = () => {
         setEditingRole({
-            id: `role-${Date.now()}`,
+            id: Date.now(),
             name: '',
             description: '',
             isSystem: false,
@@ -47,7 +48,7 @@ const RoleManagement = () => {
         setIsRoleModalOpen(true);
     };
 
-    const handleDeleteRole = (id: string) => {
+    const handleDeleteRole = (id: number) => {
         if (roles.find(r => r.id === id)?.isSystem) {
             alert("系统默认角色无法删除。");
             return;
@@ -108,7 +109,7 @@ const RoleManagement = () => {
                         <p className="text-sm text-slate-500">自定义角色分组，并配置细粒度的功能访问与字段可见性。</p>
                     </div>
                  </div>
-                 {currentUser?.role === 'admin' && (
+                 {currentUser?.role === 1 && ( // Admin ID
                      <button 
                         onClick={handleAddRole}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-blue-700"
@@ -153,7 +154,6 @@ const RoleManagement = () => {
                  ))}
             </div>
 
-            {/* Role Editor Modal */}
             {isRoleModalOpen && editingRole && (
                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">

@@ -27,7 +27,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   // Handle Guest Role (No Permissions)
-  if (currentUser?.role === 'guest') {
+  if (currentUser?.role === 4) {
       return (
           <div className="flex flex-col items-center justify-center h-[80vh] text-center animate-in fade-in zoom-in duration-300">
               <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6 shadow-inner">

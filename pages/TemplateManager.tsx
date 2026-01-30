@@ -1,7 +1,8 @@
+
 import React, { useState, useRef } from 'react';
 import { useStore } from '../store';
 import { TemplateSettings } from '../types';
-import { Save, CheckCircle, FileText, Factory, FileSpreadsheet, RotateCcw, Upload, Download, Trash2, HelpCircle } from 'lucide-react';
+import { Save, CheckCircle, FileText, Factory, FileSpreadsheet, RotateCcw, Upload, Download, Trash2, HelpCircle, Image as ImageIcon, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const TemplateManager = () => {
@@ -11,6 +12,7 @@ const TemplateManager = () => {
     const [isSaved, setIsSaved] = useState(false);
     
     const quoteFileInputRef = useRef<HTMLInputElement>(null);
+    const logoInputRef = useRef<HTMLInputElement>(null);
     const productionFileInputRef = useRef<HTMLInputElement>(null);
 
     const canEdit = hasPermission('templates', 'edit');
@@ -39,6 +41,21 @@ const TemplateManager = () => {
                     production: { ...prev.production, templateFileBase64: base64, templateFileName: file.name }
                 }));
             }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const base64 = event.target?.result as string;
+            setConfig(prev => ({
+                ...prev,
+                quote: { ...prev.quote, companyLogo: base64 }
+            }));
         };
         reader.readAsDataURL(file);
     };
@@ -238,18 +255,69 @@ const TemplateManager = () => {
                             {/* Basic Info Fields (Used to fill placeholders) */}
                             <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-100">
                                 <div className="col-span-2">
-                                    <h4 className="font-bold text-slate-700 mb-4">基础信息配置 (用于填充模板)</h4>
+                                    <h4 className="font-bold text-slate-700 mb-4">基础信息与 PDF 设置</h4>
                                 </div>
-                                <div className="col-span-1">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">公司名称</label>
-                                    <input 
-                                        type="text" 
-                                        className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={config.quote.companyName}
-                                        onChange={e => setConfig({...config, quote: {...config.quote, companyName: e.target.value}})}
-                                        disabled={!canEdit}
-                                    />
+                                
+                                {/* Company Logo Upload */}
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">公司图标 / Logo</label>
+                                    <div 
+                                        className="border-2 border-dashed border-slate-300 rounded-lg p-4 flex flex-col items-center justify-center bg-slate-50 cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-colors h-32 relative group"
+                                        onClick={() => canEdit && logoInputRef.current?.click()}
+                                    >
+                                        {config.quote.companyLogo ? (
+                                            <>
+                                                <img src={config.quote.companyLogo} alt="Logo" className="h-full w-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg">
+                                                    <span className="text-white text-xs font-medium">点击更换</span>
+                                                </div>
+                                                {canEdit && <button 
+                                                    onClick={(e) => { e.stopPropagation(); setConfig(prev => ({...prev, quote: {...prev.quote, companyLogo: ''}})) }}
+                                                    className="absolute top-1 right-1 p-1 bg-white rounded-full text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ImageIcon className="w-8 h-8 text-slate-300 mb-2" />
+                                                <span className="text-xs text-slate-500">点击上传 Logo (PNG/JPG)</span>
+                                            </>
+                                        )}
+                                        <input 
+                                            type="file" 
+                                            ref={logoInputRef} 
+                                            accept="image/*"
+                                            className="hidden" 
+                                            onChange={handleLogoUpload}
+                                        />
+                                    </div>
                                 </div>
+
+                                <div className="col-span-2 md:col-span-1 space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">文档标题 (Document Title)</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={config.quote.title}
+                                            placeholder="例如: 报价单, Sales Quote..."
+                                            onChange={e => setConfig({...config, quote: {...config.quote, title: e.target.value}})}
+                                            disabled={!canEdit}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">公司名称 (自定义名称)</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={config.quote.companyName}
+                                            onChange={e => setConfig({...config, quote: {...config.quote, companyName: e.target.value}})}
+                                            disabled={!canEdit}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="col-span-1">
                                     <label className="block text-sm font-medium text-slate-700 mb-1">联系方式</label>
                                     <input 

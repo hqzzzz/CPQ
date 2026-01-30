@@ -1,201 +1,103 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { Product, BOMStructure, BOMItem } from '../types';
-import { ChevronRight, ChevronDown, Plus, Trash, Box, DollarSign, Layers, FilePlus, FileText } from 'lucide-react';
-import { AddItemModal, CreateBOMModal } from '../components/bom/BOMModals';
-
-interface BOMNodeProps {
-  item: BOMItem;
-  allProducts: Product[];
-  onDelete: (id: string) => void;
-  onAddChild: (parentId: string, parentTypeName: string) => void;
-  onUpdate: (id: string, updates: Partial<BOMItem>) => void;
-  level?: number;
-  canViewCost: boolean;
-}
-
-// Recursive Component for BOM Tree
-const BOMNode: React.FC<BOMNodeProps> = ({ 
-  item, 
-  allProducts, 
-  onDelete, 
-  onAddChild,
-  onUpdate,
-  level = 0,
-  canViewCost
-}) => {
-  const [isOpen, setIsOpen] = useState(true);
-  const { types } = useStore();
-  const product = allProducts.find(p => p.id === item.productId);
-
-  if (!product) return null;
-
-  const totalCost = product.cost * item.quantity;
-  const typeDef = types.find(t => t.name === product.type);
-  const currentLevel = typeDef ? typeDef.level : 99;
-
-  // Determine if we can add children (Can add if there are types with higher level number available)
-  const canAddChildren = types.some(t => t.level > currentLevel);
-
-  return (
-    <div className="select-none">
-      <div 
-        className={`flex items-center p-3 border-b border-slate-100 hover:bg-slate-50 transition-colors group`}
-        style={{ paddingLeft: `${level * 24 + 12}px` }}
-      >
-        <button 
-          onClick={() => setIsOpen(!isOpen)} 
-          className={`mr-2 p-1 rounded hover:bg-slate-200 text-slate-500 ${(!item.children || item.children.length === 0) && 'invisible'}`}
-        >
-          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </button>
-        
-        <div className="flex-1 grid grid-cols-12 gap-4 items-center">
-          {/* Column 1: Name (Span 5) */}
-          <div className="col-span-5 flex items-center gap-3">
-            <Box className={`w-4 h-4 text-${typeDef?.color || 'slate'}-500 shrink-0`} />
-            <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                    <span className="text-slate-800 font-medium truncate">{product.name}</span>
-                    <span className={`text-[10px] px-1.5 rounded border bg-${typeDef?.color || 'slate'}-50 border-${typeDef?.color || 'slate'}-200 text-${typeDef?.color || 'slate'}-700 shrink-0`}>
-                        {product.type}
-                    </span>
-                </div>
-                <div className="text-xs text-slate-400 truncate">{product.materialCode}</div>
-            </div>
-          </div>
-
-          {/* Column 2: Quantity Input (Span 2) */}
-          <div className="col-span-2 flex justify-center">
-            <input 
-                type="number" 
-                min="1"
-                className="w-20 p-1 border border-slate-300 rounded text-center text-sm focus:ring-2 focus:ring-blue-500 outline-none hover:border-blue-300 transition-colors"
-                value={item.quantity}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => onUpdate(item.id, { quantity: Math.max(1, Number(e.target.value)) })}
-            />
-          </div>
-
-          {/* Column 3: Unit (Span 1) */}
-          <div className="col-span-1 text-slate-600 text-sm truncate" title={product.unit}>
-            {product.unit}
-          </div>
-
-          {/* Column 4: Cost (Span 2) */}
-          <div className="col-span-2 text-slate-600 text-sm truncate">
-            {canViewCost ? `¥${product.cost.toLocaleString()}` : '***'}
-          </div>
-
-          {/* Column 5: Total & Actions (Span 2) */}
-          <div className="col-span-2 flex justify-between items-center">
-             <span className="font-semibold text-slate-800">{canViewCost ? `¥${totalCost.toLocaleString()}` : '***'}</span>
-             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                {canAddChildren && (
-                    <button 
-                        onClick={() => onAddChild(item.id, product.type)} 
-                        className="text-blue-500 hover:bg-blue-100 p-1 rounded"
-                        title="添加子项"
-                    >
-                        <Plus className="w-4 h-4" />
-                    </button>
-                )}
-                <button onClick={() => onDelete(item.id)} className="text-red-400 hover:bg-red-100 p-1 rounded" title="删除">
-                    <Trash className="w-4 h-4" />
-                </button>
-             </div>
-          </div>
-        </div>
-      </div>
-      
-      {isOpen && item.children && (
-        <div>
-          {item.children.map(child => (
-            <BOMNode 
-              key={child.id} 
-              item={child} 
-              allProducts={allProducts} 
-              onDelete={onDelete}
-              onAddChild={onAddChild}
-              onUpdate={onUpdate}
-              level={level + 1} 
-              canViewCost={canViewCost}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+import { Layout, Search, Plus, Trash2, ChevronRight, ChevronDown, Layers, Save, FileText, CornerDownRight, X, AlertCircle, Box, DollarSign, CheckCircle } from 'lucide-react';
+import { CreateBOMModal } from '../components/bom/BOMModals';
 
 const BOMBuilder = () => {
   const { products, boms, updateBOM, addBOM, deleteBOM, currentUser } = useStore();
-  const [selectedBOMId, setSelectedBOMId] = useState<string>('');
+  const [selectedBOMId, setSelectedBOMId] = useState<number | ''>(''); 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
-  // Permission Check
-  const canViewCost = currentUser?.role !== 'sales';
+  // Add Item State
+  const [targetParentId, setTargetParentId] = useState<number | null>(null);
+  const [newProductId, setNewProductId] = useState<number | ''>('');
+  const [newQuantity, setNewQuantity] = useState(1);
 
-  // Select first BOM on load if none selected
+  // Local state for metadata form to allow editing without immediate save, and to handle "Save" button logic
+  const [metaForm, setMetaForm] = useState({ specifications: '', category: '', description: '' });
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
+  const canViewCost = currentUser?.role !== 2; // Sales role ID is 2
+
+  // Filter Auxiliary BOMs
+  const filteredBoms = boms.filter(b => 
+      !searchTerm || b.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Get current BOM object and its items
+  const activeBOM = boms.find(b => b.id === selectedBOMId);
+  const currentItems = activeBOM ? activeBOM.items : [];
+
+  // Sync local form when active BOM switches
   useEffect(() => {
-      if (!selectedBOMId && boms.length > 0) {
-          setSelectedBOMId(boms[0].id);
-      } else if (boms.length === 0) {
-          setSelectedBOMId('');
-      } else if (selectedBOMId && !boms.find(b => b.id === selectedBOMId)) {
-           // If selected BOM was deleted, select another one
-           setSelectedBOMId(boms[0].id);
+      if (activeBOM) {
+          setMetaForm({
+              specifications: activeBOM.specifications || '',
+              category: activeBOM.category || '',
+              description: activeBOM.description || ''
+          });
       }
-  }, [boms, selectedBOMId]);
+  }, [activeBOM?.id]);
 
-  // Modal State for adding children
-  const [modalState, setModalState] = useState<{
-      isOpen: boolean;
-      targetParentId: string | null; // null for root
-      parentTypeName: string;
-  }>({
-      isOpen: false,
-      targetParentId: null,
-      parentTypeName: ''
-  });
+  const getProduct = (id: number) => products.find(p => p.id === id);
 
-  const currentBOM = boms.find(b => b.id === selectedBOMId);
+  // --- Helpers ---
 
-  // Helper to calculate total cost roll-up recursively
+  const findItemRecursive = (items: BOMItem[], id: number): BOMItem | null => {
+      for (const item of items) {
+          if (item.id === id) return item;
+          if (item.children) {
+              const found = findItemRecursive(item.children, id);
+              if (found) return found;
+          }
+      }
+      return null;
+  };
+
+  const targetParentItem = targetParentId ? findItemRecursive(currentItems, targetParentId) : null;
+  // Handle deleted product lookup safely
+  const targetParentProduct = targetParentItem ? getProduct(targetParentItem.productId) : null;
+  const targetParentName = targetParentItem 
+      ? (targetParentProduct ? targetParentProduct.name : `已删组件 (ID:${targetParentItem.productId})`) 
+      : '根节点 (Top Level)';
+
   const calculateRollup = (items: BOMItem[]): number => {
     let total = 0;
     items.forEach(item => {
       const p = products.find(prod => prod.id === item.productId);
       if (p) {
         total += p.cost * item.quantity;
-        if (item.children) {
+      }
+      if (item.children) {
           total += calculateRollup(item.children);
-        }
       }
     });
     return total;
   };
 
-  const totalBOMCost = currentBOM ? calculateRollup(currentBOM.items) : 0;
+  const totalBOMCost = calculateRollup(currentItems);
 
-  // Recursive Add
-  const addItemToTree = (items: BOMItem[], targetParentId: string | null, newItem: BOMItem): BOMItem[] => {
-      if (targetParentId === null) {
+  // --- Tree Manipulation Logic ---
+
+  const addItemToTree = (items: BOMItem[], parentId: number | null, newItem: BOMItem): BOMItem[] => {
+      if (parentId === null) {
           return [...items, newItem];
       }
       return items.map(item => {
-          if (item.id === targetParentId) {
+          if (item.id === parentId) {
               return { ...item, children: [...(item.children || []), newItem] };
           }
           if (item.children) {
-              return { ...item, children: addItemToTree(item.children, targetParentId, newItem) };
+              return { ...item, children: addItemToTree(item.children, parentId, newItem) };
           }
           return item;
       });
   };
 
-  // Recursive Update
-  const updateItemInTree = (items: BOMItem[], itemId: string, updates: Partial<BOMItem>): BOMItem[] => {
+  const updateItemInTree = (items: BOMItem[], itemId: number, updates: Partial<BOMItem>): BOMItem[] => {
       return items.map(item => {
           if (item.id === itemId) return { ...item, ...updates };
           if (item.children) return { ...item, children: updateItemInTree(item.children, itemId, updates) };
@@ -203,8 +105,7 @@ const BOMBuilder = () => {
       });
   };
 
-  // Recursive Delete
-  const deleteItemFromTree = (items: BOMItem[], itemId: string): BOMItem[] => {
+  const deleteItemFromTree = (items: BOMItem[], itemId: number): BOMItem[] => {
       return items
         .filter(item => item.id !== itemId)
         .map(item => ({
@@ -213,45 +114,61 @@ const BOMBuilder = () => {
         }));
   };
 
-  const handleOpenAddModal = (parentId: string | null, parentTypeName: string) => {
-      setModalState({
-          isOpen: true,
-          targetParentId: parentId,
-          parentTypeName: parentTypeName
+  // Unified Save Function: Saves items (if provided) AND current metadata form
+  const saveBOM = (newItems?: BOMItem[]) => {
+      if (!activeBOM) return;
+      updateBOM({ 
+          ...activeBOM, 
+          items: newItems || activeBOM.items,
+          specifications: metaForm.specifications,
+          category: metaForm.category,
+          description: metaForm.description
       });
   };
 
-  const handleConfirmAdd = (productId: string, quantity: number) => {
-      if (!currentBOM) return;
+  // --- Handlers ---
+
+  const handleManualSave = () => {
+      saveBOM();
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 2000);
+  };
+
+  const handleAddItem = () => {
+      if (!activeBOM || !newProductId) return;
       
       const newItem: BOMItem = {
-          id: `bi-${Date.now()}`,
-          productId,
-          quantity,
+          id: Date.now(),
+          productId: Number(newProductId),
+          quantity: Number(newQuantity),
           children: []
       };
 
-      const updatedItems = addItemToTree(currentBOM.items, modalState.targetParentId, newItem);
-      updateBOM({ ...currentBOM, items: updatedItems });
+      const updatedItems = addItemToTree(currentItems, targetParentId, newItem);
+      saveBOM(updatedItems);
+      
+      setNewProductId('');
+      setNewQuantity(1);
   };
 
-  const handleUpdateItem = (itemId: string, updates: Partial<BOMItem>) => {
-      if (!currentBOM) return;
-      const updatedItems = updateItemInTree(currentBOM.items, itemId, updates);
-      updateBOM({ ...currentBOM, items: updatedItems });
+  const handleDeleteItem = (itemId: number) => {
+      if (!activeBOM) return;
+      if (!window.confirm("确定移除此组件吗？")) return;
+      const updatedItems = deleteItemFromTree(currentItems, itemId);
+      saveBOM(updatedItems);
+      // If we deleted the current target parent, reset to root
+      if (targetParentId === itemId) setTargetParentId(null);
   };
 
-  const handleDeleteItem = (itemId: string) => {
-    if (!currentBOM) return;
-    if (!window.confirm("确定要删除此项目及其子项吗?")) return;
-
-    const updatedItems = deleteItemFromTree(currentBOM.items, itemId);
-    updateBOM({ ...currentBOM, items: updatedItems });
+  const handleUpdateQuantity = (itemId: number, qty: number) => {
+      if (!activeBOM) return;
+      const updatedItems = updateItemInTree(currentItems, itemId, { quantity: Math.max(1, qty) });
+      saveBOM(updatedItems);
   };
 
-  const handleCreateBOM = (name: string) => {
+  const handleCreateAuxBOM = (name: string) => {
       const newBOM: BOMStructure = {
-          id: `bom-${Date.now()}`,
+          id: Date.now(),
           name: name,
           items: []
       };
@@ -259,23 +176,39 @@ const BOMBuilder = () => {
       setSelectedBOMId(newBOM.id);
   };
 
-  const handleDeleteBOM = (e: React.MouseEvent, id: string) => {
+  const handleDeleteAuxBOM = (e: React.MouseEvent, id: number) => {
       e.stopPropagation();
-      if(window.confirm('确定要删除整个 BOM 配置吗？此操作无法撤销。')) {
+      if(window.confirm('确定要删除整个辅助配置吗？此操作无法撤销。')) {
           deleteBOM(id);
+          if (selectedBOMId === id) setSelectedBOMId('');
       }
   };
+
+  // Flatten the tree for table rendering with indentation
+  const flattenItems = (items: BOMItem[], level = 0): { item: BOMItem, level: number }[] => {
+      return items.reduce((acc, item) => {
+          acc.push({ item, level });
+          if (item.children && item.children.length > 0) {
+              acc.push(...flattenItems(item.children, level + 1));
+          }
+          return acc;
+      }, [] as { item: BOMItem, level: number }[]);
+  };
+
+  const flatList = activeBOM ? flattenItems(currentItems) : [];
 
   return (
     <div className="h-full flex flex-col gap-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">BOM 构建与配置</h2>
-          <p className="text-slate-500">构建多层级辅助 BOM 清单，可直接用于智能报价。</p>
+          <h2 className="text-2xl font-bold text-slate-800">辅助配置 (BOM 模板)</h2>
+          <p className="text-slate-500">
+              管理可独立引用的辅助 BOM 模板，用于快速报价组合。
+          </p>
         </div>
-        {canViewCost && (
+        {canViewCost && selectedBOMId && (
           <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-            <span className="text-sm text-slate-500">预计 BOM 总成本:</span>
+            <span className="text-sm text-slate-500">预计总成本:</span>
             <span className="text-xl font-bold text-emerald-600 flex items-center">
               <DollarSign className="w-5 h-5" />
               {totalBOMCost.toLocaleString()}
@@ -285,135 +218,293 @@ const BOMBuilder = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-        {/* Left: BOM List */}
-        <div className="lg:col-span-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-fit">
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h3 className="font-semibold text-slate-700">活跃 BOM 列表</h3>
-            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{boms.length}</span>
+        {/* Sidebar List */}
+        <div className="lg:col-span-1 bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-fit flex flex-col min-h-[500px]">
+          <div className="flex items-center gap-2 mb-4 text-slate-700 font-bold px-1">
+              <Layout className="w-5 h-5 text-blue-600" />
+              配置列表
           </div>
-          <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto pr-1">
-            {boms.map(bom => (
-              <div
-                key={bom.id}
-                onClick={() => setSelectedBOMId(bom.id)}
-                className={`w-full text-left px-4 py-3 rounded-lg border transition-all cursor-pointer group flex justify-between items-center ${
-                  selectedBOMId === bom.id 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium shadow-sm' 
-                    : 'border-transparent hover:bg-slate-50 text-slate-600 border-slate-100'
-                }`}
-              >
-                <div className="truncate flex-1 pr-2">
-                    <div className="truncate">{bom.name}</div>
-                    <div className="text-[10px] text-slate-400 font-normal truncate">ID: {bom.id}</div>
-                </div>
-                <button 
-                    onClick={(e) => handleDeleteBOM(e, bom.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 text-slate-400 hover:text-red-500 rounded transition-all"
-                    title="删除 BOM"
-                >
-                    <Trash className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-            {boms.length === 0 && (
-                <div className="text-center py-8 text-slate-400 text-sm">
-                    暂无 BOM 数据
+
+          <div className="relative mb-3">
+              <input 
+                  type="text" 
+                  placeholder="搜索模板..."
+                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" />
+          </div>
+
+          <div className="space-y-2 flex-1 overflow-y-auto pr-1 min-h-0 max-h-[600px]">
+                {filteredBoms.map(bom => (
+                    <div
+                        key={bom.id}
+                        onClick={() => { setSelectedBOMId(bom.id); setTargetParentId(null); }}
+                        className={`w-full text-left px-3 py-3 rounded-lg border transition-all cursor-pointer group flex justify-between items-start ${
+                        selectedBOMId === bom.id 
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' 
+                            : 'border-transparent hover:bg-slate-50 text-slate-600 border-slate-100'
+                        }`}
+                    >
+                        <div className="truncate flex-1 pr-2">
+                            <div className="font-medium truncate text-sm">{bom.name}</div>
+                            <div className="text-[10px] opacity-50 font-mono mt-1">ID: {bom.id}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                    <Layers className="w-3 h-3" /> {bom.items.length} 项
+                                </div>
+                                {bom.category && <span className="text-[10px] bg-slate-200 px-1.5 rounded text-slate-600">{bom.category}</span>}
+                            </div>
+                        </div>
+                        <button 
+                            onClick={(e) => handleDeleteAuxBOM(e, bom.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 text-slate-400 hover:text-red-500 rounded transition-all shrink-0"
+                            title="删除 BOM"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                ))}
+            
+            {filteredBoms.length === 0 && (
+                <div className="text-center py-12 text-slate-400 text-sm flex flex-col items-center">
+                    <Layers className="w-8 h-8 mb-2 opacity-20" />
+                    暂无辅助 BOM 配置
                 </div>
             )}
           </div>
+          
           <button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="mt-4 w-full py-2 border border-dashed border-slate-300 rounded-lg text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-colors text-sm flex items-center justify-center gap-2"
+            className="mt-4 w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
           >
-            <Plus className="w-4 h-4" /> 创建新 BOM
+            <Plus className="w-4 h-4" /> 新建配置
           </button>
         </div>
 
-        {/* Right: BOM Structure Editor */}
+        {/* Main Editor Area */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-           {/* Tree View */}
-           <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex-1 overflow-hidden min-h-[500px] flex flex-col">
-             {currentBOM ? (
-                <>
-                    <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 grid grid-cols-12 gap-4 text-xs font-semibold text-slate-500 uppercase">
-                        <div className="col-span-5">结构层级</div>
-                        <div className="col-span-2 text-center">数量</div>
-                        <div className="col-span-1">单位</div>
-                        <div className="col-span-2">{canViewCost ? '单位成本' : '***'}</div>
-                        <div className="col-span-2 text-right">小计 / 操作</div>
-                    </div>
-                    
-                    <div className="overflow-y-auto flex-1 p-0">
-                        {/* Root Header Node - Now standalone, representing the BOM itself */}
-                        <div className="flex items-center p-3 bg-blue-50/30 border-b border-blue-100 group">
-                            <div className="mr-2 w-6"></div> {/* Spacer for chevron */}
-                            <div className="flex-1 grid grid-cols-12 gap-4 items-center">
-                            <div className="col-span-5 flex items-center gap-3">
-                                <FileText className="w-5 h-5 text-blue-700" />
-                                <div>
-                                    <span className="font-bold text-slate-800 text-lg">{currentBOM.name}</span>
-                                    <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
-                                        辅助 BOM
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="col-span-2 text-center text-slate-400 text-sm">-</div>
-                            <div className="col-span-1 text-slate-400 text-sm">-</div>
-                            <div className="col-span-2 text-slate-400 text-sm">-</div>
-                            <div className="col-span-2 flex justify-end items-center">
-                                <button 
-                                    onClick={() => handleOpenAddModal(null, 'ROOT')}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded shadow-sm flex items-center gap-1 text-xs"
-                                >
-                                    <Plus className="w-3 h-3" /> 添加
-                                </button>
-                            </div>
-                            </div>
-                        </div>
+           {activeBOM ? (
+               <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex-1 flex flex-col min-h-[500px]">
+                   {/* Header */}
+                   <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+                       <div className="flex justify-between items-center mb-4">
+                           <div className="flex items-center gap-3">
+                               <FileText className="w-6 h-6 text-blue-600" />
+                               <div>
+                                   <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                       {activeBOM.name}
+                                       <span className="text-[10px] px-2 py-0.5 rounded border bg-blue-100 text-blue-700 border-blue-200">BOM配单</span>
+                                   </div>
+                                   <div className="text-xs text-slate-500 font-mono">TEMPLATE-ID-{activeBOM.id}</div>
+                               </div>
+                           </div>
+                           
+                           {/* SAVE BUTTON */}
+                           <button 
+                                onClick={handleManualSave}
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-blue-700 shadow-sm transition-all active:scale-95"
+                           >
+                               {showSaveSuccess ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                               {showSaveSuccess ? '已保存' : '保存配置'}
+                           </button>
+                       </div>
+                       
+                       <div className="grid grid-cols-3 gap-4">
+                          <div>
+                              <label className="text-xs font-semibold text-slate-500 mb-1 block">规格型号</label>
+                              <input 
+                                  type="text" 
+                                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white"
+                                  placeholder="规格查询库"
+                                  value={metaForm.specifications}
+                                  onChange={(e) => setMetaForm(prev => ({...prev, specifications: e.target.value}))}
+                              />
+                          </div>
+                          <div>
+                              <label className="text-xs font-semibold text-slate-500 mb-1 block">分类</label>
+                              <input 
+                                  type="text" 
+                                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white"
+                                  placeholder="分类决定报价归类"
+                                  value={metaForm.category}
+                                  onChange={(e) => setMetaForm(prev => ({...prev, category: e.target.value}))}
+                              />
+                          </div>
+                          <div>
+                               <label className="text-xs font-semibold text-slate-500 mb-1 block">详细描述</label>
+                               <input 
+                                  type="text"
+                                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-white"
+                                  placeholder="配置详细说明..."
+                                  value={metaForm.description}
+                                  onChange={(e) => setMetaForm(prev => ({...prev, description: e.target.value}))}
+                               />
+                          </div>
+                       </div>
+                   </div>
 
-                        {/* Children */}
-                        {currentBOM.items.map(item => (
-                        <BOMNode 
-                            key={item.id} 
-                            item={item} 
-                            allProducts={products} 
-                            onDelete={handleDeleteItem}
-                            onAddChild={handleOpenAddModal}
-                            onUpdate={handleUpdateItem}
-                            level={1} 
-                            canViewCost={canViewCost}
-                        />
-                        ))}
-                        {currentBOM.items.length === 0 && (
-                            <div className="p-8 text-center text-slate-400">
-                                <Layers className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                                <p>此 BOM 暂无组件，请点击上方“添加”按钮开始构建。</p>
-                            </div>
-                        )}
-                    </div>
-                </>
-             ) : (
-                 <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                     <FilePlus className="w-16 h-16 mb-4 opacity-20" />
-                     <p className="text-lg font-medium">请选择或创建一个 BOM</p>
-                     <p className="text-sm">在左侧列表中选择项目，或点击“创建新 BOM”开始。</p>
-                 </div>
-             )}
-           </div>
+                   {/* Inline Add Bar */}
+                   <div className="p-4 bg-white border-b border-slate-200">
+                       {targetParentId && (
+                           <div className="flex items-center gap-2 text-xs text-blue-600 mb-2 bg-blue-50 p-2 rounded border border-blue-100 w-fit">
+                               <CornerDownRight className="w-3 h-3" />
+                               正在向 <strong>{targetParentName}</strong> 添加子组件
+                               <button onClick={() => setTargetParentId(null)} className="ml-2 hover:text-red-500"><X className="w-3 h-3"/></button>
+                           </div>
+                       )}
+                       <div className="flex items-end gap-2">
+                           <div className="flex-1">
+                               <label className="text-xs font-semibold text-slate-500 mb-1 block">选择组件</label>
+                               <select 
+                                   className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                   value={newProductId}
+                                   onChange={e => setNewProductId(Number(e.target.value))}
+                               >
+                                   <option value="">-- 选择要添加的产品 --</option>
+                                   {products.map(p => (
+                                       <option key={p.id} value={p.id}>{p.name} - {p.materialCode}</option>
+                                   ))}
+                                </select>
+                           </div>
+                           <div className="w-24">
+                               <label className="text-xs font-semibold text-slate-500 mb-1 block">数量</label>
+                               <input 
+                                   type="number" 
+                                   min="1" 
+                                   className="w-full p-2 border border-slate-300 rounded-lg text-sm text-center"
+                                   value={newQuantity}
+                                   onChange={e => setNewQuantity(Number(e.target.value))}
+                               />
+                           </div>
+                           <button 
+                               onClick={handleAddItem}
+                               disabled={!newProductId}
+                               className="bg-blue-600 text-white p-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+                               title="添加"
+                           >
+                               <Plus className="w-5 h-5" />
+                           </button>
+                       </div>
+                   </div>
+
+                   {/* Table View */}
+                   <div className="flex-1 overflow-auto">
+                       <table className="w-full text-left text-sm">
+                           <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                               <tr>
+                                   <th className="px-4 py-3 font-medium text-slate-600 w-1/3">组件名称</th>
+                                   <th className="px-4 py-3 font-medium text-slate-600">编码</th>
+                                   <th className="px-4 py-3 font-medium text-slate-600 text-center">数量</th>
+                                   {canViewCost && <th className="px-4 py-3 font-medium text-slate-600 text-right">单价(成本)</th>}
+                                   {canViewCost && <th className="px-4 py-3 font-medium text-slate-600 text-right">小计</th>}
+                                   <th className="px-4 py-3 font-medium text-slate-600 text-right">操作</th>
+                               </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                               {flatList.length === 0 ? (
+                                   <tr>
+                                       <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                                           <div className="flex flex-col items-center">
+                                               <Layers className="w-8 h-8 mb-2 opacity-20" />
+                                               暂无组件，请在上方添加。
+                                           </div>
+                                       </td>
+                                   </tr>
+                               ) : (
+                                   flatList.map(({ item, level }) => {
+                                       const product = getProduct(item.productId);
+                                       const subtotal = product ? product.cost * item.quantity : 0;
+                                       const isTarget = targetParentId === item.id;
+
+                                       return (
+                                           <tr key={item.id} className={`hover:bg-slate-50 group ${isTarget ? 'bg-blue-50/60' : ''} ${!product ? 'bg-red-50/20' : ''}`}>
+                                               <td className="px-4 py-3">
+                                                   <div style={{ paddingLeft: `${level * 24}px` }} className="flex items-center gap-2">
+                                                       {level > 0 && <CornerDownRight className="w-3 h-3 text-slate-300" />}
+                                                       
+                                                       {product ? (
+                                                           <>
+                                                               <Box className="w-4 h-4 text-slate-400 shrink-0" />
+                                                               <span className={`truncate ${level === 0 ? 'font-medium text-slate-800' : 'text-slate-600'}`}>
+                                                                   {product.name}
+                                                               </span>
+                                                           </>
+                                                       ) : (
+                                                            <span className="text-red-500 text-xs flex items-center gap-1 font-medium" title={`原产品ID: ${item.productId}`}>
+                                                                <AlertCircle className="w-3 h-3" />
+                                                                组件已删除 / 请核对
+                                                            </span>
+                                                       )}
+
+                                                       {isTarget && <span className="text-[10px] text-blue-600 font-bold ml-2 animate-pulse">● 目标父级</span>}
+                                                   </div>
+                                               </td>
+                                               <td className="px-4 py-3 text-slate-500 font-mono text-xs">{product?.materialCode || '-'}</td>
+                                               <td className="px-4 py-3 text-center">
+                                                   <input 
+                                                       type="number" 
+                                                       min="1" 
+                                                       className="w-16 p-1 border border-slate-200 rounded text-center text-xs focus:ring-1 focus:ring-blue-500 outline-none bg-transparent hover:bg-white transition-colors"
+                                                       value={item.quantity}
+                                                       onChange={(e) => handleUpdateQuantity(item.id, Number(e.target.value))}
+                                                   />
+                                               </td>
+                                               {canViewCost && (
+                                                   <td className="px-4 py-3 text-right text-slate-600">
+                                                       {product ? `¥${product.cost.toLocaleString()}` : '-'}
+                                                   </td>
+                                               )}
+                                               {canViewCost && (
+                                                   <td className="px-4 py-3 text-right font-medium text-slate-800">
+                                                       {product ? `¥${subtotal.toLocaleString()}` : '-'}
+                                                   </td>
+                                               )}
+                                               <td className="px-4 py-3 text-right">
+                                                   <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                       {product && (
+                                                           <button 
+                                                               onClick={() => setTargetParentId(targetParentId === item.id ? null : item.id)}
+                                                               className={`p-1.5 rounded transition-colors ${targetParentId === item.id ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-100'}`}
+                                                               title="添加子组件到此项"
+                                                           >
+                                                               <Plus className="w-3.5 h-3.5" />
+                                                           </button>
+                                                       )}
+                                                       <button 
+                                                           onClick={() => handleDeleteItem(item.id)}
+                                                           className="p-1.5 text-red-500 hover:bg-red-100 rounded transition-colors"
+                                                           title="删除"
+                                                       >
+                                                           <Trash2 className="w-3.5 h-3.5" />
+                                                       </button>
+                                                   </div>
+                                               </td>
+                                           </tr>
+                                       );
+                                   })
+                               )}
+                           </tbody>
+                       </table>
+                   </div>
+               </div>
+           ) : (
+               <div className="flex flex-col items-center justify-center h-full text-slate-400 bg-white rounded-xl border border-slate-200 shadow-sm">
+                   <FileText className="w-16 h-16 mb-4 opacity-20" />
+                   <p className="text-lg font-medium">请选择一个配置模板</p>
+                   <p className="text-sm mt-2">
+                       从左侧列表选择，或点击“新建配置”创建。
+                   </p>
+               </div>
+           )}
         </div>
       </div>
-
-      <AddItemModal 
-          isOpen={modalState.isOpen}
-          onClose={() => setModalState(prev => ({ ...prev, isOpen: false }))}
-          onAdd={handleConfirmAdd}
-          parentTypeName={modalState.parentTypeName}
-      />
 
       <CreateBOMModal 
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onCreate={handleCreateBOM}
+          onCreate={handleCreateAuxBOM}
       />
     </div>
   );

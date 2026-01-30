@@ -8,7 +8,7 @@ interface PrivateRouteProps {
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     const { currentUser } = useStore();
-    return currentUser ? <>{children}</> : <Navigate to="/login" />;
+    return currentUser ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
 export default PrivateRoute;

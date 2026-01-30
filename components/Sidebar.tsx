@@ -11,7 +11,7 @@ const Sidebar = () => {
 
   const allNavItems: { icon: any, label: string, path: string, resource: ResourceKey }[] = [
     { icon: LayoutDashboard, label: '仪表盘', path: '/', resource: 'dashboard' },
-    { icon: Tags, label: '产品类型管理', path: '/types', resource: 'types' },
+    { icon: Tags, label: '产品层级管理', path: '/types', resource: 'types' },
     { icon: Database, label: '产品库管理', path: '/products', resource: 'products' },
     { icon: Layers, label: 'BOM 构建', path: '/bom', resource: 'bom' },
     { icon: FileText, label: '智能报价', path: '/quotes', resource: 'quotes' },

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { Quote, BOMItem, Product } from '../types';
@@ -5,7 +6,7 @@ import { FileSpreadsheet, Box, Factory, AlertTriangle, ArrowRight, CheckCircle2,
 import * as XLSX from 'xlsx';
 
 interface ProductionMaterial {
-    productId: string;
+    productId: number;
     materialCode: string;
     name: string;
     unit: string;
@@ -16,8 +17,8 @@ interface ProductionMaterial {
 }
 
 const ProductionOrder = () => {
-    const { quotes, products, boms, templateSettings } = useStore();
-    const [selectedQuoteId, setSelectedQuoteId] = useState('');
+    const { quotes, products, boms, productBoms, templateSettings } = useStore();
+    const [selectedQuoteId, setSelectedQuoteId] = useState<number | ''>('');
     const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
     const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
@@ -29,33 +30,35 @@ const ProductionOrder = () => {
 
     // Recursively flatten BOM structure to get leaf nodes (materials)
     const flattenBOM = (
-        productId: string, 
+        productId: number, 
         qtyMultiplier: number, 
-        accumulator: Map<string, number>,
+        accumulator: Map<number, number>,
         customBOM?: BOMItem[] // If quote item has custom BOM config
     ) => {
         // 1. Determine the structure to traverse
-        // If customBOM is provided (from Quote Item modification), use that.
-        // Otherwise, look for a BOM definition in the store.
         let itemsToTraverse: BOMItem[] | undefined = customBOM;
 
         if (!itemsToTraverse) {
-            const definedBOM = boms.find(b => b.rootProductId === productId);
-            if (definedBOM) {
-                itemsToTraverse = definedBOM.items;
+            // Check Product BOMs first
+            const prodBOM = productBoms.find(b => b.productId === productId);
+            if (prodBOM) {
+                itemsToTraverse = prodBOM.items;
+            } else {
+                // Check Auxiliary BOMs (if productId matches BOM ID)
+                const auxBOM = boms.find(b => b.id === productId);
+                if (auxBOM) {
+                    itemsToTraverse = auxBOM.items;
+                }
             }
         }
 
         // 2. Traversal Logic
         if (itemsToTraverse && itemsToTraverse.length > 0) {
-            // It has children, so it's an assembly. Traverse deeper.
             itemsToTraverse.forEach(child => {
                 flattenBOM(child.productId, child.quantity * qtyMultiplier, accumulator, child.children);
             });
         } else {
-            // It has no children (Leaf Node), so it's a raw material/part needed for production.
-            // OR it's a standalone product with no BOM.
-            // Add to accumulator.
+            // Leaf Node (Product with no further BOM definition)
             const currentQty = accumulator.get(productId) || 0;
             accumulator.set(productId, currentQty + qtyMultiplier);
         }
@@ -64,21 +67,20 @@ const ProductionOrder = () => {
     const productionMaterials = useMemo(() => {
         if (!selectedQuote) return [];
 
-        const accumulator = new Map<string, number>();
+        const accumulator = new Map<number, number>();
 
         selectedQuote.items.forEach(quoteItem => {
             // Check if this quote item is a standalone BOM (Auxiliary) or a Product
             const isAuxBOM = boms.find(b => b.id === quoteItem.productId);
             
             if (isAuxBOM) {
-                // If the quote item ID matches a BOM ID, it means it's a standalone BOM added to quote
-                // We must use the quoteItem.bomConfig if available (customized), else the original BOM items
+                // If it's an Aux BOM, traverse its items (or custom config if overridden)
                 const itemsToUse = quoteItem.bomConfig || isAuxBOM.items;
                 itemsToUse.forEach(child => {
                     flattenBOM(child.productId, child.quantity * quoteItem.quantity, accumulator, child.children);
                 });
             } else {
-                // It's a standard Product ID
+                // It's a Product (might have a Product BOM attached)
                 flattenBOM(quoteItem.productId, quoteItem.quantity, accumulator, quoteItem.bomConfig);
             }
         });
@@ -88,8 +90,6 @@ const ProductionOrder = () => {
         accumulator.forEach((qty, pid) => {
             const product = products.find(p => p.id === pid);
             if (product) {
-                // Find type definition to get level
-                // We assume store.types is available, but for now we map via product properties
                 result.push({
                     productId: pid,
                     materialCode: product.materialCode,
@@ -98,13 +98,13 @@ const ProductionOrder = () => {
                     requiredQty: qty,
                     currentInventory: product.inventory,
                     category: product.category || '其他',
-                    level: 0 // Placeholder, purely flattened list implies lowest level needed
+                    level: 0
                 });
             }
         });
 
         return result.sort((a, b) => a.category.localeCompare(b.category) || a.materialCode.localeCompare(b.materialCode));
-    }, [selectedQuote, products, boms]);
+    }, [selectedQuote, products, boms, productBoms]);
 
     const availableCategories = useMemo(() => {
         const cats = new Set(productionMaterials.map(m => m.category));
@@ -116,14 +116,14 @@ const ProductionOrder = () => {
         return productionMaterials.filter(m => m.category === selectedCategory);
     }, [productionMaterials, selectedCategory]);
 
+    // ... (Export logic remains largely the same) ...
     const handleExport = () => {
         if (!selectedQuote || filteredMaterials.length === 0) return;
 
         const { production: tpl } = templateSettings;
 
-        // Standard replacements for custom templates
         const replacements: Record<string, string> = {
-            '{{QuoteID}}': selectedQuote.id,
+            '{{QuoteID}}': selectedQuote.id.toString(),
             '{{CustomerName}}': selectedQuote.customerName,
             '{{Date}}': new Date().toLocaleDateString()
         };
@@ -131,13 +131,11 @@ const ProductionOrder = () => {
         let wb: XLSX.WorkBook;
         let ws: XLSX.WorkSheet;
 
-        // Case 1: Custom Template
         if (tpl.templateFileBase64) {
             try {
                 wb = XLSX.read(tpl.templateFileBase64, { type: 'base64' });
                 ws = wb.Sheets[wb.SheetNames[0]];
                 
-                // --- Simple Replacement & Fill (Existing Logic for Custom Template) ---
                 const range = XLSX.utils.decode_range(ws['!ref'] || "A1:H100");
                 let tableStartRow = -1;
                 let tableStartCol = 0;
@@ -165,7 +163,6 @@ const ProductionOrder = () => {
                 if (tableStartRow === -1) tableStartRow = range.e.r + 2;
                 else tableStartRow++;
 
-                // Flattened List for Custom Template
                 const tableData: any[][] = [];
                 let idx = 1;
                 filteredMaterials.forEach(m => {
@@ -183,38 +180,29 @@ const ProductionOrder = () => {
                 ws = XLSX.utils.aoa_to_sheet([["Production Order - Error"]]);
             }
         } 
-        // Case 2: Default Template with Grouping Logic (Matching Quote Style)
         else {
             wb = XLSX.utils.book_new();
-            
-            // Build Array of Arrays
             const wsData: any[][] = [];
             
-            // Header
             wsData.push([tpl.title]);
             wsData.push([]);
             wsData.push(["关联报价单:", selectedQuote.id, "", "日期:", new Date().toLocaleDateString()]);
             wsData.push(["客户:", selectedQuote.customerName, "", "范围:", selectedCategory === 'ALL' ? '全部分类' : selectedCategory]);
             wsData.push([]);
 
-            // Group materials by category
             const groupedMaterials: Record<string, ProductionMaterial[]> = {};
             filteredMaterials.forEach(m => {
                 if (!groupedMaterials[m.category]) groupedMaterials[m.category] = [];
                 groupedMaterials[m.category].push(m);
             });
 
-            // Table Header Row
             wsData.push(["序号", "物料编码", "物料名称", "分类", "单位", "需求数量", "当前库存", "缺口状态"]);
             
             let globalIndex = 1;
             
-            // Loop groups
             Object.keys(groupedMaterials).sort().forEach(category => {
-                // Section Header (Only show if ALL is selected, or just to keep format consistent)
                 wsData.push([`-- ${category} --`, "", "", "", "", "", "", ""]);
                 
-                // Items
                 groupedMaterials[category].forEach(m => {
                     const shortage = Math.max(0, m.requiredQty - m.currentInventory);
                     wsData.push([
@@ -232,21 +220,19 @@ const ProductionOrder = () => {
 
             ws = XLSX.utils.aoa_to_sheet(wsData);
             
-            // Basic merged cells for title
             ws['!merges'] = [
-                { s: {r:0, c:0}, e: {r:0, c:7} }, // Title
+                { s: {r:0, c:0}, e: {r:0, c:7} }, 
             ];
             
-            // Set widths
             ws['!cols'] = [
-                { wch: 8 },  // Idx
-                { wch: 20 }, // Code
-                { wch: 30 }, // Name
-                { wch: 15 }, // Category
-                { wch: 8 },  // Unit
-                { wch: 10 }, // Req
-                { wch: 10 }, // Inv
-                { wch: 12 }, // Status
+                { wch: 8 },  
+                { wch: 20 }, 
+                { wch: 30 }, 
+                { wch: 15 }, 
+                { wch: 8 },  
+                { wch: 10 }, 
+                { wch: 10 }, 
+                { wch: 12 }, 
             ];
         }
 
@@ -260,11 +246,10 @@ const ProductionOrder = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">生产单管理</h2>
-                    <p className="text-slate-500">基于销售报价单生成生产所需的底层物料清单 (BOM 展开)。</p>
+                    <p className="text-slate-500">基于销售报价单生成生产所需的底层物料清单 (BOM 自动展开)。</p>
                 </div>
             </div>
 
-            {/* Selection Area */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-4">
                     <div className="flex-1 max-w-md">
@@ -272,7 +257,7 @@ const ProductionOrder = () => {
                         <select 
                             className="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50"
                             value={selectedQuoteId}
-                            onChange={e => setSelectedQuoteId(e.target.value)}
+                            onChange={e => setSelectedQuoteId(Number(e.target.value))}
                         >
                             <option value="">-- 请选择已批准的报价单 --</option>
                             {quotes
@@ -326,7 +311,6 @@ const ProductionOrder = () => {
                 </div>
             </div>
 
-            {/* Material List Table */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex-1 overflow-hidden flex flex-col">
                 {selectedQuoteId ? (
                     <>
@@ -351,56 +335,51 @@ const ProductionOrder = () => {
                                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                                     <tr>
                                         <th className="px-6 py-3 font-semibold text-slate-600">物料编码</th>
-                                        <th className="px-6 py-3 font-semibold text-slate-600">物料名称 / 描述</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-600">物料名称</th>
                                         <th className="px-6 py-3 font-semibold text-slate-600">分类</th>
-                                        <th className="px-6 py-3 font-semibold text-slate-600 text-center">需求数量</th>
-                                        <th className="px-6 py-3 font-semibold text-slate-600 text-center">当前库存</th>
-                                        <th className="px-6 py-3 font-semibold text-slate-600 text-center">缺口分析</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-600">单位</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-600">需求数量</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-600">当前库存</th>
+                                        <th className="px-6 py-3 font-semibold text-slate-600">缺口状态</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {filteredMaterials.map(item => {
-                                        const shortage = Math.max(0, item.requiredQty - item.currentInventory);
-                                        return (
-                                            <tr key={item.productId} className="hover:bg-slate-50 transition-colors">
-                                                <td className="px-6 py-4 font-mono text-slate-500">{item.materialCode}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="font-medium text-slate-800">{item.name}</div>
-                                                    <div className="text-xs text-slate-400">Unit: {item.unit}</div>
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-600">
-                                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
-                                                        {item.category}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center font-bold text-blue-700 bg-blue-50/30">
-                                                    {item.requiredQty}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-slate-600">
-                                                    {item.currentInventory}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    {shortage > 0 ? (
-                                                        <div className="inline-flex items-center gap-1 text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-100">
-                                                            <AlertTriangle className="w-3 h-3" />
-                                                            <span className="font-bold">缺 {shortage}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 opacity-70">
-                                                            <CheckCircle2 className="w-3 h-3" />
-                                                            <span>充足</span>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {filteredMaterials.length === 0 && (
+                                    {filteredMaterials.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="text-center py-8 text-slate-400">
-                                                当前分类下无物料数据
+                                            <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <Box className="w-8 h-8 mb-2 opacity-20" />
+                                                    暂无物料需求数据
+                                                </div>
                                             </td>
                                         </tr>
+                                    ) : (
+                                        filteredMaterials.map((m, idx) => {
+                                            const shortage = Math.max(0, m.requiredQty - m.currentInventory);
+                                            return (
+                                                <tr key={`${m.productId}-${idx}`} className="hover:bg-slate-50">
+                                                    <td className="px-6 py-3 font-mono text-slate-600">{m.materialCode}</td>
+                                                    <td className="px-6 py-3 text-slate-800 font-medium">{m.name}</td>
+                                                    <td className="px-6 py-3">
+                                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">{m.category}</span>
+                                                    </td>
+                                                    <td className="px-6 py-3 text-slate-600">{m.unit}</td>
+                                                    <td className="px-6 py-3 font-bold text-slate-800">{m.requiredQty}</td>
+                                                    <td className="px-6 py-3 text-slate-600">{m.currentInventory}</td>
+                                                    <td className="px-6 py-3">
+                                                        {shortage > 0 ? (
+                                                            <span className="flex items-center gap-1 text-red-600 font-bold bg-red-50 px-2 py-1 rounded w-fit">
+                                                                <AlertTriangle className="w-3 h-3" /> 缺 {shortage}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded w-fit">
+                                                                <CheckCircle2 className="w-3 h-3" /> 充足
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     )}
                                 </tbody>
                             </table>
@@ -408,9 +387,9 @@ const ProductionOrder = () => {
                     </>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400">
-                        <Box className="w-16 h-16 mb-4 opacity-20" />
-                        <p className="text-lg font-medium">请先在上方选择一个报价单</p>
-                        <p className="text-sm">系统将自动计算所需的所有零部件及原材料。</p>
+                        <ArrowRight className="w-12 h-12 mb-4 opacity-20" />
+                        <p className="text-lg font-medium">请先选择一个报价单</p>
+                        <p className="text-sm mt-2">系统将自动分析所需物料并计算缺口。</p>
                     </div>
                 )}
             </div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Users, Plus, Lock, Edit2, Trash2, User as UserIcon, X, Briefcase, Mail, Key } from 'lucide-react';
 import { useStore } from '../../store';
@@ -10,16 +11,16 @@ const UserManagement = () => {
 
     const handleAddUser = () => {
         setEditingUser({
-            id: `u${Date.now()}`,
+            id: Date.now(), // Numeric ID
             employeeId: '',
             username: '',
             name: '',
             email: '',
-            role: 'sales',
+            role: 2, // Default to Sales (ID 2)
             title: '',
             department: '',
             authProvider: 'local',
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${Date.now()}`
+            avatar: ''
         });
         setIsUserModalOpen(true);
     };
@@ -29,7 +30,7 @@ const UserManagement = () => {
         setIsUserModalOpen(true);
     };
 
-    const handleDeleteUser = (id: string) => {
+    const handleDeleteUser = (id: number) => {
         if (id === currentUser?.id) {
             alert("无法删除当前登录用户。");
             return;
@@ -74,7 +75,7 @@ const UserManagement = () => {
                         <p className="text-sm text-slate-500">分配用户到指定的角色组。</p>
                     </div>
                  </div>
-                 {currentUser?.role === 'admin' && (
+                 {currentUser?.role === 1 && ( // Admin is 1
                      <button 
                         onClick={handleAddUser}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 hover:bg-blue-700"
@@ -84,7 +85,7 @@ const UserManagement = () => {
                  )}
              </div>
 
-             {currentUser?.role !== 'admin' ? (
+             {currentUser?.role !== 1 ? (
                  <div className="bg-red-50 border border-red-200 p-4 rounded-lg flex items-center gap-3 text-red-700">
                      <Lock className="w-5 h-5" />
                      <span>您没有权限管理用户。请联系管理员。</span>
@@ -107,7 +108,13 @@ const UserManagement = () => {
                                  <tr key={user.id} className="hover:bg-slate-50">
                                      <td className="p-4">
                                          <div className="flex items-center gap-3">
-                                             <img src={user.avatar} className="w-8 h-8 rounded-full border border-slate-200" alt="" />
+                                             {user.avatar ? (
+                                                <img src={user.avatar} className="w-8 h-8 rounded-full border border-slate-200 object-cover" alt="" />
+                                             ) : (
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                                    <UserIcon className="w-4 h-4" />
+                                                </div>
+                                             )}
                                              <div>
                                                  <div className="font-medium text-slate-800 flex items-center gap-2">
                                                      {user.name}
@@ -153,7 +160,6 @@ const UserManagement = () => {
                  </div>
              )}
 
-            {/* Edit User Modal */}
             {isUserModalOpen && editingUser && (
                 <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg animate-in fade-in zoom-in duration-200">
@@ -225,7 +231,7 @@ const UserManagement = () => {
                                     <select 
                                         className="w-full p-2 border border-slate-300 rounded-lg text-sm bg-blue-50/50"
                                         value={editingUser.role}
-                                        onChange={e => setEditingUser({...editingUser, role: e.target.value})}
+                                        onChange={e => setEditingUser({...editingUser, role: Number(e.target.value)})}
                                     >
                                         {roles.map(r => (
                                             <option key={r.id} value={r.id}>{r.name}</option>

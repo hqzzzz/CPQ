@@ -1,19 +1,20 @@
+
 import React, { useState } from 'react';
 import { useStore } from '../../store';
 import { Product } from '../../types';
 
-export const AddItemModal = ({ isOpen, onClose, onAdd, parentTypeName }: any) => {
+export const AddItemModal = ({ isOpen, onClose, onAdd, parentTypeId }: any) => {
     const { products, types } = useStore();
     const [selectedProduct, setSelectedProduct] = useState("");
     const [quantity, setQuantity] = useState(1);
 
     if (!isOpen) return null;
 
-    const isRoot = parentTypeName === 'ROOT';
-    const parentLevel = isRoot ? 0 : (types.find(t => t.name === parentTypeName)?.level || 0);
+    const isRoot = parentTypeId === 0;
+    const parentLevel = isRoot ? 0 : (types.find(t => t.id === parentTypeId)?.level || 0);
 
     const availableProducts = products.filter((p: Product) => {
-        const pTypeDef = types.find(t => t.name === p.type);
+        const pTypeDef = types.find(t => t.id === p.type);
         return pTypeDef && pTypeDef.level > parentLevel;
     });
 
@@ -26,6 +27,8 @@ export const AddItemModal = ({ isOpen, onClose, onAdd, parentTypeName }: any) =>
         }
     };
 
+    const parentName = isRoot ? 'BOM 根节点' : (types.find(t => t.id === parentTypeId)?.name || '未知类型');
+
     return (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
@@ -35,7 +38,7 @@ export const AddItemModal = ({ isOpen, onClose, onAdd, parentTypeName }: any) =>
                 </div>
                 <div className="p-6 space-y-4">
                     <div className="text-sm text-slate-500 bg-slate-50 p-2 rounded mb-4">
-                        父级: <span className="font-medium text-slate-700">{isRoot ? 'BOM 根节点' : parentTypeName}</span>. 
+                        父级: <span className="font-medium text-slate-700">{parentName}</span>. 
                         仅显示可用的下级组件。
                     </div>
                     <div>
@@ -46,11 +49,13 @@ export const AddItemModal = ({ isOpen, onClose, onAdd, parentTypeName }: any) =>
                             onChange={e => setSelectedProduct(e.target.value)}
                         >
                             <option value="">-- 请选择 --</option>
-                            {availableProducts.map((p: Product) => (
+                            {availableProducts.map((p: Product) => {
+                                const typeName = types.find(t => t.id === p.type)?.name;
+                                return (
                                 <option key={p.id} value={p.id}>
-                                    [{p.type}] {p.name} - ¥{p.cost}
+                                    [{typeName}] {p.name} - ¥{p.cost}
                                 </option>
-                            ))}
+                            )})}
                         </select>
                         {availableProducts.length === 0 && (
                             <p className="text-xs text-red-500 mt-1">没有符合层级规则的下级项目。</p>
