@@ -6,11 +6,12 @@ import { Plus, Search, Edit2, Trash2, Cpu, ChevronRight, ChevronDown, CornerDown
 
 import DeleteConfirmationModal from '../components/common/DeleteConfirmationModal';
 import FilterHeader from '../components/products/FilterHeader';
+import MultiSelectFilter from '../components/products/MultiSelectFilter';
 import ProductEditModal from '../components/products/ProductEditModal';
 import ProductShowcaseModal from '../components/products/ProductShowcaseModal';
 
 const ProductManager = () => {
-  const { products, types, productBoms, quotes, addProduct, updateProduct, deleteProduct, updateProductBOM, hasPermission } = useStore();
+  const { products, types, categories, productBoms, quotes, addProduct, updateProduct, deleteProduct, updateProductBOM, hasPermission } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -153,9 +154,13 @@ const ProductManager = () => {
     const matchesType = !selectedTypeFilter || String(p.type) === selectedTypeFilter;
     const matchesColumns = Object.entries(columnFilters).every(([key, value]) => {
         if (!value) return true;
+        if (key === 'type') {
+            // 多选筛选：检查产品类型是否在选中的类型列表中
+            const selectedTypeValues = value.split(',');
+            return selectedTypeValues.includes(String(p.type));
+        }
         const filterVal = value.toLowerCase();
         if (key === 'name') return p.name.toLowerCase().includes(filterVal);
-        if (key === 'type') return getTypeName(p.type).toLowerCase().includes(filterVal);
         const itemVal = String((p as any)[key] || '').toLowerCase();
         return itemVal.includes(filterVal);
     });
@@ -276,10 +281,26 @@ const ProductManager = () => {
                         <FilterHeader label="单位" fieldKey="unit" columnFilters={columnFilters} setColumnFilters={setColumnFilters} activeFilterCol={activeFilterCol} setActiveFilterCol={setActiveFilterCol} />
                     </th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <FilterHeader label="类型" fieldKey="type" columnFilters={columnFilters} setColumnFilters={setColumnFilters} activeFilterCol={activeFilterCol} setActiveFilterCol={setActiveFilterCol} />
+                        <MultiSelectFilter
+                            label="类型"
+                            fieldKey="type"
+                            options={types.map(t => ({ value: String(t.id), label: t.name }))}
+                            columnFilters={columnFilters}
+                            setColumnFilters={setColumnFilters}
+                            activeFilterCol={activeFilterCol}
+                            setActiveFilterCol={setActiveFilterCol}
+                        />
                     </th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <FilterHeader label="子类" fieldKey="category" columnFilters={columnFilters} setColumnFilters={setColumnFilters} activeFilterCol={activeFilterCol} setActiveFilterCol={setActiveFilterCol} />
+                        <MultiSelectFilter
+                            label="子类"
+                            fieldKey="category"
+                            options={categories.map(c => ({ value: c.name, label: c.name }))}
+                            columnFilters={columnFilters}
+                            setColumnFilters={setColumnFilters}
+                            activeFilterCol={activeFilterCol}
+                            setActiveFilterCol={setActiveFilterCol}
+                        />
                     </th>
                     {canViewCost && (
                       <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
