@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const path = require('path');
+require('dotenv').config();
 
 const SystemLogger = require('./utils/logger');
 const { requireAuth, setBootstrapKey } = require('./middleware/auth');
@@ -63,26 +64,30 @@ app.use('/api', authRouter); // Register Auth Router
 
 // --- SERVER START ---
 const startServer = (port) => {
-    const server = app.listen(port, '0.0.0.0', () => {
-        const msg = `CloudCPQ Backend Server running on port ${port}`;
-        SystemLogger.info(msg);
-        console.log(`\n=========================================================`);
-        console.log(msg);
-        console.log(` URL: http://localhost:${port}`);
-        console.log(` Storage: ${BUCK_ROOT}`);
-        console.log(` Bootstrap API Key: ${BOOTSTRAP_KEY}`);
-        console.log(` Admin Access Restricted to Localhost`);
-        console.log(`=========================================================\n`);
-    });
+    // Initialize database from environment variables if available
+    const { autoInitDb } = require('./utils/db');
+    autoInitDb().then(() => {
+        const server = app.listen(port, '0.0.0.0', () => {
+            const msg = `CloudCPQ Backend Server running on port ${port}`;
+            SystemLogger.info(msg);
+            console.log(`\n=========================================================`);
+            console.log(msg);
+            console.log(` URL: http://localhost:${port}`);
+            console.log(` Storage: ${BUCK_ROOT}`);
+            console.log(` Bootstrap API Key: ${BOOTSTRAP_KEY}`);
+            console.log(` Admin Access Restricted to Localhost`);
+            console.log(`=========================================================\n`);
+        });
 
-    server.on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            SystemLogger.warn(`Port ${port} is busy. Trying ${port + 1}...`);
-            startServer(port + 1);
-        } else {
-            SystemLogger.error('Fatal Server Error', err);
-            console.error('Server error:', err);
-        }
+        server.on('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                SystemLogger.warn(`Port ${port} is busy. Trying ${port + 1}...`);
+                startServer(port + 1);
+            } else {
+                SystemLogger.error('Fatal Server Error', err);
+                console.error('Server error:', err);
+            }
+        });
     });
 };
 

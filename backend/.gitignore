@@ -1,0 +1,25 @@
+# Environment variables and local configurations
+.env
+.env.local
+.env.*.local
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies (handled by package-lock.json)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+
+# Local storage (optional, can be tracked if shared)
+# BUCK/

@@ -4,7 +4,7 @@ const SystemLogger = require('../utils/logger');
 
 // 引导密钥 (Bootstrap Key): 用于系统初始化或紧急管理员访问
 // 注意：此密钥仅允许来自 Localhost (本机) 的连接
-let BOOTSTRAP_KEY = null; 
+let BOOTSTRAP_KEY = process.env.BOOTSTRAP_KEY || null; 
 
 const setBootstrapKey = (key) => { BOOTSTRAP_KEY = key; };
 

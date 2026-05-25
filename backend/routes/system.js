@@ -125,8 +125,8 @@ router.post('/init', async (req, res) => {
             JSON.stringify(SEED_SETTINGS.production)
         ]);
         
-        const defaultToken = 'sk-default-' + crypto.randomBytes(4).toString('hex');
-        await conn.query("INSERT INTO api_keys (id, name, token, status) VALUES (?,?,?,?)", [1, 'Default Key', defaultToken, 'active']);
+        const defaultToken = 'sk-19921123';
+        await conn.query("INSERT INTO api_keys (id, name, token, status) VALUES (?,?,?,?)", [1, 'sk-admin', defaultToken, 'active']);
 
         await conn.commit();
         conn.release();

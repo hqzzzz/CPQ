@@ -5,7 +5,7 @@ const path = require('path');
 const SystemLogger = require('../utils/logger');
 const { getPool } = require('../utils/db');
 
-const BUCK_ROOT = path.join(__dirname, '../../BUCK'); 
+const BUCK_ROOT = process.env.BUCK_ROOT || path.join(__dirname, '../../BUCK'); 
 
 const storage = multer.diskStorage({
     destination: async function (req, file, cb) {

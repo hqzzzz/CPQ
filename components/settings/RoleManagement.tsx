@@ -125,7 +125,7 @@ const RoleManagement = () => {
                          <div className="flex justify-between items-start mb-2">
                              <h4 className="font-bold text-slate-800 flex items-center gap-2">
                                  {role.name}
-                                 {role.isSystem && <span className="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">系统默认</span>}
+                                 {role.isSystem ? <span className="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">系统默认</span> : null}
                              </h4>
                              <div className="flex gap-1">
                                  <button onClick={() => handleEditRole(role)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded">
@@ -142,11 +142,15 @@ const RoleManagement = () => {
                          <div className="text-xs text-slate-400 font-mono mb-2">ID: {role.id}</div>
                          <div className="flex flex-wrap gap-1">
                              {Object.keys(role.permissions).length > 0 ? (
-                                 Object.entries(role.permissions).slice(0, 3).map(([key, actions]) => (
-                                     <span key={key} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] text-slate-500">
-                                         {RESOURCES.find(r => r.key === key)?.label}: {actions.length}项
-                                     </span>
-                                 ))
+                                 Object.entries(role.permissions).slice(0, 3).map(([key, actions]) => {
+                                     const resourceLabel = RESOURCES.find(r => r.key === key)?.label;
+                                     if (!resourceLabel) return null; // 跳过无效资源
+                                     return (
+                                         <span key={key} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] text-slate-500">
+                                             {resourceLabel}: {actions.length}项
+                                         </span>
+                                     );
+                                 }).filter(Boolean)
                              ) : <span className="text-xs text-slate-400">无权限</span>}
                              {Object.keys(role.permissions).length > 3 && <span className="text-[10px] text-slate-400 px-1">...</span>}
                          </div>

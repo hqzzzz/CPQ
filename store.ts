@@ -48,32 +48,47 @@ class Store {
   }
 
   // --- Data Synchronization ---
+  // Fetch all data (original behavior)
   fetchData = async () => {
-      try {
-          const [p, t, c, b, pb, q, u, r, s] = await Promise.all([
-              apiService.getProducts().catch(() => []),
-              apiService.getTypes().catch(() => []),
-              apiService.getCategories().catch(() => []),
-              apiService.getBOMs().catch(() => []),
-              apiService.getProductBOMs().catch(() => []),
-              apiService.getQuotes().catch(() => []),
-              apiService.getUsers().catch(() => []),
-              apiService.getRoles().catch(() => []),
-              apiService.getTemplateSettings().catch(() => DEFAULT_TEMPLATE_SETTINGS)
-          ]);
+      await this.fetchDataByModules(['all']);
+  }
 
-          this.products = p;
-          this.types = t;
-          this.categories = c;
-          this.boms = b;
-          this.productBoms = pb;
-          this.quotes = q;
-          this.users = u;
-          this.roles = r.length > 0 ? r : DEFAULT_ROLES;
-          this.templateSettings = s;
-          this.notify();
+  // Fetch data by specific modules
+  fetchDataByModules = async (modules: ('products' | 'types' | 'categories' | 'boms' | 'productBoms' | 'quotes' | 'users' | 'roles' | 'templateSettings' | 'all')[]) => {
+      const fetchAll = modules.includes('all');
+
+      try {
+          if (fetchAll || modules.includes('products')) {
+              this.products = await apiService.getProducts();
+          }
+          if (fetchAll || modules.includes('types')) {
+              this.types = await apiService.getTypes();
+          }
+          if (fetchAll || modules.includes('categories')) {
+              this.categories = await apiService.getCategories();
+          }
+          if (fetchAll || modules.includes('boms')) {
+              this.boms = await apiService.getBOMs();
+          }
+          if (fetchAll || modules.includes('productBoms')) {
+              this.productBoms = await apiService.getProductBOMs();
+          }
+          if (fetchAll || modules.includes('quotes')) {
+              this.quotes = await apiService.getQuotes();
+          }
+          if (fetchAll || modules.includes('users')) {
+              this.users = await apiService.getUsers();
+          }
+          if (fetchAll || modules.includes('roles')) {
+              this.roles = (await apiService.getRoles()).length > 0 ? (await apiService.getRoles()) : DEFAULT_ROLES;
+          }
+          if (fetchAll || modules.includes('templateSettings')) {
+              this.templateSettings = await apiService.getTemplateSettings();
+          }
       } catch (e) {
-          console.error("Failed to fetch initial data", e);
+          console.error("Failed to fetch data", e);
+      } finally {
+          this.notify();
       }
   }
 
@@ -175,6 +190,10 @@ class Store {
       this.fetchData();
   }
   deleteProduct = async (id: number) => {
+      // 立即从本地数组中移除，让 UI 立即更新
+      this.products = this.products.filter(p => p.id !== id);
+      this.notify();
+      // 后台刷新数据
       await apiService.deleteProduct(String(id));
       this.fetchData();
   }

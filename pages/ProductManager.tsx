@@ -117,7 +117,15 @@ const ProductManager = () => {
 
   const executeDelete = () => {
       if (deleteConfirmation.product) {
-          deleteProduct(deleteConfirmation.product.id);
+          const productId = deleteConfirmation.product.id;
+          // 先从 expandedRows 中移除，立即更新 UI 隐藏该行
+          setExpandedRows(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(productId);
+              return newSet;
+          });
+          // 再执行删除操作
+          deleteProduct(productId);
           setDeleteConfirmation({ isOpen: false, product: null, usageWarning: null });
       }
   };
@@ -153,6 +161,11 @@ const ProductManager = () => {
     });
     return matchesSearch && matchesType && matchesColumns;
   });
+
+  // 过滤 expandedRows，只保留有效的 product IDs（被删除的产品会自动移除）
+  const validExpandedRows = new Set([...expandedRows].filter(id =>
+      products.some(p => p.id === id)
+  ));
 
   // Calculate dynamic style for badge based on color string
   const getTypeStyle = (typeId: number) => {
@@ -290,7 +303,7 @@ const ProductManager = () => {
                   ) : filteredProducts.map((product) => {
                     const typeName = getTypeName(product.type);
                     const typeStyle = getTypeStyle(product.type);
-                    const isExpanded = expandedRows.has(product.id);
+                    const isExpanded = validExpandedRows.has(product.id);
                     const relatedBOM = productBoms.find(b => b.productId === product.id);
                     const bomItemCount = relatedBOM ? relatedBOM.items.length : 0;
                     

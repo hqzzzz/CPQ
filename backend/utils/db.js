@@ -12,9 +12,9 @@ const getDb = async () => {
 };
 
 const configureDb = async (config) => {
-    const { host, port, user, password, database } = config; 
+    const { host, port, user, password, database } = config;
     const dbUser = user || config.username || 'root';
-    
+
     SystemLogger.info(`Reconfiguring Database connection to ${host}:${port}/${database}`);
 
     if (dbPool) await dbPool.end();
@@ -33,4 +33,29 @@ const configureDb = async (config) => {
 
 const getPool = () => dbPool;
 
-module.exports = { getDb, configureDb, getPool };
+// Auto-initialize database from environment variables
+const autoInitDb = async () => {
+    const envConfig = {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || '3306',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'cpq'
+    };
+    
+    if (process.env.DB_HOST || process.env.DB_USER || process.env.DB_PASSWORD || process.env.DB_NAME) {
+        try {
+            SystemLogger.info('Auto-initializing database from environment variables...');
+            await configureDb(envConfig);
+            SystemLogger.info('Database auto-initialization complete');
+            return true;
+        } catch (err) {
+            SystemLogger.warn(`Database auto-initialization failed: ${err.message}`);
+            SystemLogger.info('Server will start but database functionality will be unavailable');
+            return false;
+        }
+    }
+    return false;
+};
+
+module.exports = { getDb, configureDb, getPool, autoInitDb };

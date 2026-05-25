@@ -8,18 +8,18 @@ import { ResourceKey } from '../types';
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout, hasPermission, roles } = useStore();
+  const { currentUser, logout, hasPermission, roles, fetchDataByModules } = useStore();
 
-  const allNavItems: { icon: any, label: string, path: string, resource: ResourceKey }[] = [
-    { icon: LayoutDashboard, label: '仪表盘', path: '/dashboard', resource: 'dashboard' },
-    { icon: Tags, label: '产品类型定义', path: '/types', resource: 'types' },
-    { icon: Tag, label: '业务分类管理', path: '/categories', resource: 'categories' },
-    { icon: Database, label: '产品库管理', path: '/products', resource: 'products' },
-    { icon: Layers, label: 'BOM 构建', path: '/bom', resource: 'bom' },
-    { icon: FileText, label: '智能报价', path: '/quotes', resource: 'quotes' },
-    { icon: Factory, label: '生产单管理', path: '/production', resource: 'production' },
-    { icon: FileSpreadsheet, label: '模板管理', path: '/templates', resource: 'templates' },
-    { icon: HardDrive, label: '系统设置', path: '/settings', resource: 'settings' },
+  const allNavItems: { icon: any, label: string, path: string, resource: ResourceKey, modules?: string[] }[] = [
+    { icon: LayoutDashboard, label: '仪表盘', path: '/dashboard', resource: 'dashboard', modules: ['quotes', 'products'] },
+    { icon: Tags, label: '产品类型定义', path: '/types', resource: 'types', modules: ['types', 'products'] },
+    { icon: Tag, label: '业务分类管理', path: '/categories', resource: 'categories', modules: ['categories', 'products', 'boms'] },
+    { icon: Database, label: '产品库管理', path: '/products', resource: 'products', modules: ['products', 'productBoms'] },
+    { icon: Layers, label: 'BOM 构建', path: '/bom', resource: 'bom', modules: ['boms', 'products'] },
+    { icon: FileText, label: '智能报价', path: '/quotes', resource: 'quotes', modules: ['quotes', 'products', 'boms', 'categories'] },
+    { icon: Factory, label: '生产单管理', path: '/production', resource: 'production', modules: ['products', 'productBoms', 'quotes'] },
+    { icon: FileSpreadsheet, label: '模板管理', path: '/templates', resource: 'templates', modules: ['templateSettings'] },
+    { icon: HardDrive, label: '系统设置', path: '/settings', resource: 'settings', modules: ['users', 'roles'] },
   ];
 
   const handleLogout = () => {
@@ -45,7 +45,7 @@ const Sidebar = () => {
         </Link>
         <div>
           <h1 className="text-lg font-bold tracking-tight">CloudCPQ</h1>
-          <p className="text-xs text-slate-400">企业版 V2.0</p>
+          <p className="text-xs text-slate-400">畜牧研发部制</p>
         </div>
       </div>
 
@@ -56,6 +56,13 @@ const Sidebar = () => {
             <Link
               key={item.path}
               to={item.path}
+              onClick={(e) => {
+                e.preventDefault();
+                if (item.modules) {
+                  fetchDataByModules(item.modules);
+                }
+                navigate(item.path);
+              }}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
                 isActive
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50'

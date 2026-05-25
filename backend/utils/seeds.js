@@ -48,19 +48,19 @@ const SEED_ROLES = [
         permissions: { dashboard: ['view'], products: ['view','create','edit','delete','view_cost','export'], settings: ['view','edit'], types: ['view', 'create', 'edit', 'delete'], categories: ['view', 'create', 'edit', 'delete'], bom: ['view', 'create', 'edit', 'delete'] } 
     },
     { 
-        id: 2, name: '销售人员', description: 'Create and manage quotes', isSystem: false, 
+        id: 2, name: '销售人员', description: '销售人员', isSystem: false, 
         permissions: { dashboard: ['view'], products: ['view'], quotes: ['view','create','edit','delete','export'], categories: ['view'] } 
     },
     { 
-        id: 3, name: '研发人员', description: 'Create and manage quotes', isSystem: false, 
+        id: 3, name: '研发人员', description: '研发人员', isSystem: false, 
         permissions: { dashboard: ['view'], products: ['view','create','edit','delete','view_cost','export'], quotes: ['view','create','edit','delete','export'], categories: ['view'] } 
     },
     { 
-        id: 3, name: '数据管理人员', description: 'Create and manage quotes', isSystem: false, 
+        id: 4, name: '数据管理人员', description: '数据管理人员', isSystem: false, 
         permissions: { dashboard: ['view'], products: ['view','edit']} 
     },
     { 
-        id: 4, name: 'Guest', description: 'Guest', isSystem: false, 
+        id: 5, name: 'Guest', description: 'Guest', isSystem: false, 
         permissions: { dashboard: ['view']} 
     }
 ];
@@ -73,7 +73,7 @@ const SEED_USERS = [
 ];
 
 const SEED_SETTINGS = {
-    quote: { title: "Sales Quote", companyName: "青岛鑫光正牧业", companyAddress: "123 Tech Blvd", companyContact: "yang.linhao@hotmail.com", terms: "Net 30" },
+    quote: { title: "Sales Quote", companyName: "青岛鑫光正牧业", companyAddress: "Tech", companyContact: "yang.linhao@hotmail.com", terms: "Net 30" },
     production: { title: "Production Work Order" }
 };
 
