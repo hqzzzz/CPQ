@@ -4,7 +4,10 @@
       "Bash(dir *)",
       "Bash(type *)",
       "Bash(findstr *)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(timeout *)"
     ]
   },
   "$version": 4

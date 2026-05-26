@@ -80,7 +80,7 @@ const Register = () => {
                     <Command className="w-6 h-6 text-white" />
                 </div>
                 <h1 className="text-2xl font-bold text-white tracking-tight">创建新账号</h1>
-                <p className="text-slate-400 mt-2 text-sm">注册 CloudCPQ 企业版</p>
+                <p className="text-slate-400 mt-2 text-sm">注册 CloudCPQ </p>
             </div>
 
             {/* Register Form */}

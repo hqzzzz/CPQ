@@ -1,31 +1,38 @@
 {
-  "name": "云端-cpq",
+  "name": "cpq",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "chcp.com 65001 >nul & set NODE_ENV=development& set CHILD_PROCESS_MAX_THREADS=1& vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "chcp.com 65001 >nul & set NODE_ENV=development& set CHILD_PROCESS_MAX_THREADS=1& vite",
+    "electron:build": "vite build && tsc -p electron/tsconfig.json",
+    "electron:start": "vite build && electron ."
   },
   "dependencies": {
-    "lucide-react": "^0.562.0",
-    "react-dom": "^19.2.3",
-    "react-router-dom": "^7.12.0",
-    "react": "^19.2.3",
     "@google/genai": "^1.38.0",
-    "recharts": "^3.7.0",
-    "xlsx": "latest",
     "exceljs": "^4.4.0",
     "html2canvas": "1.4.1",
     "jspdf": "2.5.1",
     "jspdf-autotable": "^3.8.1",
-    "md5": "^2.3.0"
+    "lucide-react": "^0.562.0",
+    "md5": "^2.3.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-router-dom": "^7.12.0",
+    "recharts": "^3.7.0",
+    "xlsx": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^42.2.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-electron": "^0.29.1",
+    "vite-plugin-electron-renderer": "^0.14.7"
   }
 }

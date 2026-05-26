@@ -3,7 +3,10 @@
     "allow": [
       "Bash(dir *)",
       "Bash(type *)",
-      "Bash(findstr *)"
+      "Bash(findstr *)",
+      "Bash(powershell *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)"
     ]
   },
   "$version": 4
