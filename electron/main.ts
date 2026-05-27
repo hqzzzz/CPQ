@@ -35,6 +35,7 @@ const getVitePort = (): string => {
 const VITE_PORT = getVitePort();
 
 function createWindow() {
+  Menu.setApplicationMenu(null); // 隐藏默认菜单
   const window = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -77,7 +78,6 @@ app.on('window-all-closed', () => {
   }
 });
 
-// 禁用硬件加速（可选，解决某些渲染问题）
-// app.disableHardwareAcceleration();
+// 禁用硬件加速（可选，解决某些渲染问题）//app.disableHardwareAcceleration();
 
 export {};

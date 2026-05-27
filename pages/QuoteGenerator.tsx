@@ -498,8 +498,8 @@ const QuoteGenerator = () => {
                 
                 row.height = 60; 
                 row.alignment = { vertical: 'middle', wrapText: true };
-                row.getCell(7).numFmt = '#,##0.00'; 
-                row.getCell(8).numFmt = '#,##0.00'; 
+                row.getCell(7).numFmt = '#,##0.000'; 
+                row.getCell(8).numFmt = '#,##0.000'; 
 
                 if (item.imageUrl) {
                     const imgData = await fetchImageAsBuffer(item.imageUrl);
@@ -529,7 +529,7 @@ const QuoteGenerator = () => {
             const subtotalRow = sheet.addRow(['', '', '', '', '', '', '本项小计:', group.total, '']);
             subtotalRow.font = { bold: true, italic: true };
             subtotalRow.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' };
-            subtotalRow.getCell(8).numFmt = '#,##0.00';
+            subtotalRow.getCell(8).numFmt = '#,##0.000';
             subtotalRow.getCell(8).font = { bold: true, color: { argb: 'FF059669' } }; 
             subtotalRow.height = 25;
             sheet.mergeCells(`A${subtotalRow.number}:F${subtotalRow.number}`);
@@ -539,12 +539,12 @@ const QuoteGenerator = () => {
         
         const subRow = sheet.addRow(['', '', '', '', '', '', '合计 (Subtotal):', subtotal, '']);
         subRow.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' };
-        subRow.getCell(8).numFmt = '¥#,##0.00';
+        subRow.getCell(8).numFmt = '¥#,##0.000';
         subRow.font = { bold: true };
 
-        const taxRow = sheet.addRow(['', '', '', '', '', '', `税费 (Tax ${(tax/subtotal*100).toFixed(0)}%):`, tax, '']);
+        const taxRow = sheet.addRow(['', '', '', '', '', '', `税费 (Tax ${(tax/subtotal*100).toFixed(4)}%):`, tax, '']);
         taxRow.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' };
-        taxRow.getCell(8).numFmt = '¥#,##0.00';
+        taxRow.getCell(8).numFmt = '¥#,##0.000';
         taxRow.font = { color: { argb: 'FF64748B' } }; 
 
         const totalRow = sheet.addRow(['', '', '', '', '', '', '总计 (Grand Total):', total, '']);
@@ -552,7 +552,7 @@ const QuoteGenerator = () => {
         totalRow.font = { bold: true, size: 14, color: { argb: 'FF000000' } };
         totalRow.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' };
         totalRow.getCell(8).alignment = { vertical: 'middle' };
-        totalRow.getCell(8).numFmt = '¥#,##0.00';
+        totalRow.getCell(8).numFmt = '¥#,##0.000';
         
         sheet.addRow([]);
         sheet.addRow(['报价汇总表']).font = { bold: true, size: 12 };
@@ -565,11 +565,11 @@ const QuoteGenerator = () => {
         // 汇总表也遵循排序
         categoryOrder.forEach((cat, i) => {
              const sumRow = sheet.addRow([`（${chineseNumerals[i]||(i+1)}） ${cat}`, groupedItems[cat].total]);
-             sumRow.getCell(2).numFmt = '#,##0.00';
+             sumRow.getCell(2).numFmt = '#,##0.000';
         });
         const finalSumRow = sheet.addRow(['项目总价', subtotal]);
         finalSumRow.font = { bold: true };
-        finalSumRow.getCell(2).numFmt = '¥#,##0.00';
+        finalSumRow.getCell(2).numFmt = '¥#,##0.000';
 
         sheet.addRow([]);
         sheet.addRow(['条款:', tpl.terms || '']);
@@ -806,11 +806,11 @@ const QuoteGenerator = () => {
           
           const summaryBody = categoryOrder.map((cat, i) => [
               `（${chineseNumerals[i]||(i+1)}） ${cat}`,
-              `¥${groupedData.groupedItems[cat].total.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+              `¥${groupedData.groupedItems[cat].total.toLocaleString(undefined, {minimumFractionDigits: 4})}`
           ]);
-          summaryBody.push(['项目总价', `¥${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`]);
-          summaryBody.push(['税费 (9%)', `¥${tax.toLocaleString(undefined, {minimumFractionDigits: 2})}`]);
-          summaryBody.push(['总计', `¥${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`]);
+          summaryBody.push(['项目总价', `¥${subtotal.toLocaleString(undefined, {minimumFractionDigits: 4})}`]);
+          summaryBody.push(['税费 (9%)', `¥${tax.toLocaleString(undefined, {minimumFractionDigits: 4})}`]);
+          summaryBody.push(['总计', `¥${total.toLocaleString(undefined, {minimumFractionDigits: 4})}`]);
           summaryBody.push(['大写金额', digitToChinese(total)]);
 
           autoTable(doc, {
@@ -962,7 +962,7 @@ const QuoteGenerator = () => {
                                               <td className="p-2 border border-slate-200">{item.spec}</td>
                                               <td className="p-2 border border-slate-200 text-center">{item.unit}</td>
                                               <td className="p-2 border border-slate-200 text-center">{item.quantity}</td>
-                                              <td className="p-2 border border-slate-200 text-right">¥{sellingUnitPrice.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</td>
+                                              <td className="p-2 border border-slate-200 text-right">¥{sellingUnitPrice.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 4})}</td>
                                               <td className="p-2 border border-slate-200 text-right">¥{item.total.toLocaleString()}</td>
                                               <td className="p-2 border border-slate-200 text-slate-500">{item.description}</td>
                                           </tr>
@@ -1168,7 +1168,7 @@ const QuoteGenerator = () => {
                             
                             <div className="w-28 text-right">
                                 <label className="text-[10px] uppercase text-slate-400 font-bold">小计 (CNY)</label>
-                                <p className="font-semibold text-slate-800 py-1">¥{item.total.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</p>
+                                <p className="font-semibold text-slate-800 py-1">¥{item.total.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 4})}</p>
                             </div>
                             
                             <button onClick={() => removeItem(item.id)} className="text-slate-400 hover:text-red-500 mt-4 ml-2">
@@ -1305,10 +1305,10 @@ const QuoteGenerator = () => {
               <Sparkles className="w-32 h-32 text-white opacity-10 absolute -right-6 -bottom-6 rotate-12" />
               <div className="relative z-10">
                   <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5" /> AI 智能分析
+                      <Sparkles className="w-5 h-5" /> 分析
                   </h3>
                   <p className="text-indigo-100 text-sm mb-4">
-                      让 AI 助手分析当前报价结构，提供追加销售建议或利润优化方案。
+                      让 AI 助手分析当前报价结构
                   </p>
                   {aiAnalysis ? (
                       <div className="bg-white/10 backdrop-blur-md rounded-lg p-3 text-sm border border-white/20">

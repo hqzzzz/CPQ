@@ -1,15 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir *)",
-      "Bash(type *)",
-      "Bash(findstr *)",
-      "Bash(powershell *)",
-      "Bash(npm install *)",
-      "Bash(npm run *)",
-      "Bash(timeout *)",
-      "Bash(git rm *)",
-      "Bash(git *)"
+      "Bash(powershell *)"
     ]
   },
   "$version": 4

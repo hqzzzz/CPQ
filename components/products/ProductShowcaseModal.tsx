@@ -274,7 +274,7 @@ const ProductShowcaseModal: React.FC<ProductShowcaseModalProps> = ({ isOpen, onC
                                                         <div className="text-xs text-slate-500 flex gap-3 mt-1">
                                                             <span>{new Date(doc.uploadDate).toLocaleDateString()}</span>
                                                             <span className="w-px h-3 bg-slate-300"></span>
-                                                            <span className="font-mono">{(doc.size / 1024).toFixed(1)} KB</span>
+                                                            <span className="font-mono">{(doc.size / 1024).toFixed(2)} KB</span>
                                                         </div>
                                                     </div>
                                                 </div>

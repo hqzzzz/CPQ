@@ -82,7 +82,7 @@ router.post('/init', async (req, res) => {
             `CREATE TABLE products (
                 id BIGINT PRIMARY KEY, material_code VARCHAR(100), unit VARCHAR(20), name VARCHAR(255), 
                 description TEXT, specifications TEXT, type INT, category VARCHAR(100), 
-                cost DECIMAL(15,2), base_price DECIMAL(15,2), inventory INT, 
+                cost DECIMAL(15,4), base_price DECIMAL(15,4), inventory INT, 
                 base_image LONGTEXT,
                 gallery_images_json LONGTEXT, documents_json LONGTEXT
             )`,
@@ -90,7 +90,7 @@ router.post('/init', async (req, res) => {
             `CREATE TABLE product_boms (product_id BIGINT PRIMARY KEY, items_json LONGTEXT)`,
             `CREATE TABLE quotes (
                 id BIGINT PRIMARY KEY, customer_name VARCHAR(255), date DATETIME, status VARCHAR(50), 
-                subtotal DECIMAL(15,2), tax DECIMAL(15,2), grand_total DECIMAL(15,2), items_json LONGTEXT, ai_analysis TEXT,
+                subtotal DECIMAL(15,4), tax DECIMAL(15,4), grand_total DECIMAL(15,4), items_json LONGTEXT, ai_analysis TEXT,
                 status_log_json LONGTEXT
             )`,
             `CREATE TABLE roles (id BIGINT PRIMARY KEY, name VARCHAR(100), description TEXT, is_system BOOLEAN, permissions_json TEXT)`,
