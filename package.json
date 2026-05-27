@@ -10,7 +10,35 @@
     "preview": "vite preview",
     "electron:dev": "chcp.com 65001 >nul & set NODE_ENV=development& set CHILD_PROCESS_MAX_THREADS=1& vite",
     "electron:build": "vite build && tsc -p electron/tsconfig.json",
-    "electron:start": "vite build && electron ."
+    "electron:start": "vite build && electron .",
+    "dist": "npm run electron:build && electron-builder --win --publish=never"
+  },
+  "build": {
+    "appId": "com.cq.app",
+    "productName": "CPQ",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "dependencies": {
     "@google/genai": "^1.38.0",
@@ -30,6 +58,7 @@
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vite-plugin-electron": "^0.29.1",

@@ -72,6 +72,20 @@ const Login = () => {
     setIsLoading(true);
     setStatusMsg('正在验证身份...');
     setError('');
+    try {
+        const connection = await apiService.testConnection();
+        if (connection.success) {
+          
+        } else {
+            // Backend reached but returned failure (unlikely for testConnection)
+            setError('服务器连接异常: ' + (connection.message || '未知错误'));
+        }
+    } catch (err: any) {
+        // Network request failed completely
+        setError('无法连接到服务器。请检查 API 地址配置或网络状态。');
+    }
+
+  
     
     // Hash password with MD5 before sending
     const hashedPassword = md5(password);
@@ -84,25 +98,14 @@ const Login = () => {
     if (result.success) {
         navigate('/dashboard');
         return;
-    } 
+    } else {  
+        setError('用户名或密码错误');
+    }
 
     // 2. If login failed, diagnose: Is it Auth Error or Network Error?
     // We attempt a lightweight ping to the server.
     setStatusMsg('登录失败，正在检测服务器连接...');
-    
-    try {
-        const connection = await apiService.testConnection();
-        if (connection.success) {
-            // Backend is reachable, so it must be invalid credentials
-            setError('账号或密码错误，请重试。');
-        } else {
-            // Backend reached but returned failure (unlikely for testConnection)
-            setError('服务器连接异常: ' + (connection.message || '未知错误'));
-        }
-    } catch (err: any) {
-        // Network request failed completely
-        setError('无法连接到服务器。请检查 API 地址配置或网络状态。');
-    }
+
 
     setIsLoading(false);
     setStatusMsg('');
@@ -160,7 +163,7 @@ const Login = () => {
                     <Command className="w-8 h-8 text-white" />
                 </div>
                 <h1 className="text-3xl font-bold text-white tracking-tight">CloudCPQ</h1>
-                <p className="text-slate-400 mt-2 text-sm">企业级智能配置报价系统</p>
+                <p className="text-slate-400 mt-2 text-sm">配置报价系统</p>
             </div>
 
             {/* OAuth */}

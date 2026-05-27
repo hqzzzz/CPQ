@@ -21,11 +21,17 @@ class Store {
   quotes: Quote[] = [];
   users: User[] = [];
   roles: RoleDefinition[] = DEFAULT_ROLES;
-  
+
   currentUser: User | null = null;
   templateSettings: TemplateSettings = DEFAULT_TEMPLATE_SETTINGS;
-  
+
   listeners: Set<() => void> = new Set();
+
+  // 用户索引 Map，用于 O(1) 查询而不是 O(n) 遍历
+  private userIndex: Map<string, User> = new Map();
+  private employeeIdIndex: Map<string, User> = new Map();
+  // 登录失败计数，防暴力破解
+  private loginAttempts: Map<string, { count: number; lockUntil: number }> = new Map();
   
   constructor() {
       const savedUser = localStorage.getItem('cpq_user');
@@ -78,6 +84,7 @@ class Store {
           }
           if (fetchAll || modules.includes('users')) {
               this.users = await apiService.getUsers();
+              this.buildUserIndexes();
           }
           if (fetchAll || modules.includes('roles')) {
               this.roles = (await apiService.getRoles()).length > 0 ? (await apiService.getRoles()) : DEFAULT_ROLES;
@@ -92,32 +99,64 @@ class Store {
       }
   }
 
+  // 构建用户索引，实现 O(1) 查询
+  private buildUserIndexes = () => {
+      this.userIndex.clear();
+      this.employeeIdIndex.clear();
+      this.users.forEach(user => {
+          if (user.username) this.userIndex.set(user.username.toLowerCase(), user);
+          if (user.employeeId) this.employeeIdIndex.set(user.employeeId.toString(), user);
+      });
+  }
+
   // --- Authentication ---
 
-  // 1. Local Login
+  // 1. 本地登录（推荐使用后端 API，见 completeOAuthLogin 或创建 loginWithPassword API）
   login = (username: string, passHash: string) => {
-      // In a real app, this should call apiService.login(username, pass) to get a token.
-      // For this implementation, we simulate checking against the fetched user list.
-      const user = this.users.find(u => 
-          (u.username === username || u.employeeId === username) && 
-          (u.password === passHash || 
-           passHash === 'e10adc3949ba59abbe56e057f20f883e' || // MD5(123456)
-           passHash === '21232f297a57a5a743894a0e4a801fc3') // MD5(admin)
-      );
-      
-      if (user) {
+      const identifier = username.toLowerCase();
+      const lockoutInfo = this.loginAttempts.get(identifier);
+      const now = Date.now();
+
+      // 检查账户是否被锁定
+      if (lockoutInfo && lockoutInfo.lockUntil > now) {
+          const minutesLeft = Math.ceil((lockoutInfo.lockUntil - now) / 60000);
+          return { success: false, message: `账户已锁定，请在 ${minutesLeft} 分钟后重试` };
+      }
+
+      // 使用索引查询，O(1) 性能
+      const user = this.userIndex.get(identifier) || this.employeeIdIndex.get(identifier);
+
+      if (user && user.password === passHash) {
           this.currentUser = user;
           localStorage.setItem('cpq_user', JSON.stringify(user));
+          // 清除失败计数
+          this.loginAttempts.delete(identifier);
           this.notify();
           return { success: true };
       }
-      return { success: false, message: '用户名或密码错误' };
+
+      // 记录失败尝试
+      const attempts = lockoutInfo?.count || 0;
+      if (attempts >= 9) {
+          // 第10次失败，锁定15分钟
+          this.loginAttempts.set(identifier, {
+              count: attempts + 1,
+              lockUntil: now + 15 * 60000
+          });
+          return { success: false, message: '登录失败次数过多，账户已锁定15分钟' };
+      }
+
+      this.loginAttempts.set(identifier, {
+          count: attempts + 1,
+          lockUntil: 0
+      });
+      return { success: false, message: `用户名或密码错误 (${attempts + 1}/10)` };
   }
 
   // 2. OAuth Initiation
   initiateOAuthLogin = async (provider: AuthProvider) => {
       try {
-          const { url } = await apiService.getOAuthUrl(provider);
+          const url = await apiService.getOAuthUrl(provider);
           if (url) {
               window.location.href = url; // Redirect to Google/Microsoft/WeChat
               return true;
@@ -128,7 +167,23 @@ class Store {
       return false;
   }
 
-  // 3. OAuth Completion (Code Exchange)
+  // 推荐：使用后端 API 进行密码认证（更安全）
+  // 需要在 apiService 中添加此方法
+  loginWithPassword = async (username: string, passHash: string) => {
+      try {
+          const user = await apiService.loginWithPassword(username, passHash);
+          if (user) {
+              this.currentUser = user;
+              localStorage.setItem('cpq_user', JSON.stringify(user));
+              await this.fetchData();
+              this.notify();
+              return { success: true };
+          }
+          return { success: false, message: '用户名或密码错误' };
+      } catch (e: any) {
+          return { success: false, message: e.message || '登录失败' };
+      }
+  }
   completeOAuthLogin = async (provider: AuthProvider, code: string) => {
       try {
           const user = await apiService.loginWithOAuth(provider, code);

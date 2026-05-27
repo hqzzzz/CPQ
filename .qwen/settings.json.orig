@@ -6,7 +6,9 @@
       "Bash(findstr *)",
       "Bash(powershell *)",
       "Bash(npm install *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(timeout *)",
+      "Bash(git rm *)"
     ]
   },
   "$version": 4

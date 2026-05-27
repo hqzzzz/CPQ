@@ -15,6 +15,10 @@ if (process.platform === 'win32') {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
+    // 构建输出目录
+    build: {
+      outDir: 'dist',
+    },
     server: {
       port: 3000,
       strictPort: false,
