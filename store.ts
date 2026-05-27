@@ -182,12 +182,22 @@ class Store {
 
   // --- Products ---
   addProduct = async (product: Product) => {
+      // 立即添加到本地数组，让 UI 立即更新
+      this.products = [...this.products, product];
+      this.notify();
+      // 后台保存到服务器
       await apiService.createProduct(product);
-      this.fetchData();
+      // 后台刷新数据以同步服务器状态
+      await this.fetchDataByModules(['products', 'productBoms']);
   }
   updateProduct = async (product: Product) => {
+      // 立即更新本地数组，让 UI 立即更新
+      this.products = this.products.map(p => p.id === product.id ? product : p);
+      this.notify();
+      // 后台保存到服务器
       await apiService.updateProduct(product);
-      this.fetchData();
+      // 后台刷新数据以同步服务器状态
+      await this.fetchDataByModules(['products', 'productBoms']);
   }
   deleteProduct = async (id: number) => {
       // 立即从本地数组中移除，让 UI 立即更新
@@ -195,7 +205,7 @@ class Store {
       this.notify();
       // 后台刷新数据
       await apiService.deleteProduct(String(id));
-      this.fetchData();
+      await this.fetchDataByModules(['products', 'productBoms']);
   }
 
   // --- Types ---

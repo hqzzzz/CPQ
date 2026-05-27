@@ -118,16 +118,19 @@ router.post('/init', async (req, res) => {
         }
         for (const r of SEED_ROLES) await conn.query("INSERT INTO roles VALUES (?,?,?,?,?)", [r.id, r.name, r.description, r.isSystem, JSON.stringify(r.permissions)]);
         for (const u of SEED_USERS) await conn.query(`INSERT INTO users (id, username, name, email, role, employee_id, avatar, auth_provider, password, last_login) 
-            VALUES (?,?,?,?,?,?,?,?,?,?)`, [u.id, u.username, u.name, u.email, u.role, u.employee_id, u.avatar, u.authProvider, 'admin', new Date()]);
+            VALUES (?,?,?,?,?,?,?,?,?,?)`, [u.id, u.username, u.name, u.email, u.role, u.employee_id, u.avatar, u.authProvider, u.password, new Date()]);
         
         await conn.query("INSERT INTO settings VALUES (?,?,?)", ['global', 
             JSON.stringify(SEED_SETTINGS.quote), 
             JSON.stringify(SEED_SETTINGS.production)
         ]);
         
-        const defaultToken = 'sk-19921123';
+        const defaultToken = 'sk-' + crypto.randomBytes(8).toString('hex');
         await conn.query("INSERT INTO api_keys (id, name, token, status) VALUES (?,?,?,?)", [1, 'sk-admin', defaultToken, 'active']);
 
+        const TestToken = 'sk-19921123';
+        await conn.query("INSERT INTO api_keys (id, name, token, status) VALUES (?,?,?,?)", [2, 'sk-test', TestToken, 'active']);
+        
         await conn.commit();
         conn.release();
         

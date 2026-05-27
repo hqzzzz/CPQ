@@ -68,6 +68,11 @@ const ProductManager = () => {
         id: savedProductId,
       } as Product;
       addProduct(newProduct);
+         setExpandedRows(prev => {
+              const newSet = new Set(prev);
+              newSet.add(savedProductId);
+              return newSet;
+          });
     }
 
     // Save Product BOM

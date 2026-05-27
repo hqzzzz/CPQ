@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-electron
 *.local
 
 # Editor directories and files
@@ -23,3 +24,9 @@ dist-ssr
 *.sln
 *.sw?
 BUCK
+
+# Qwen Code
+.qwen/output-language.md
+
+# OS
+Thumbs.db

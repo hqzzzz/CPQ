@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from "electron";
+import { app, BrowserWindow } from "electron";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
@@ -24,7 +24,6 @@ const getVitePort = () => {
 };
 const VITE_PORT = getVitePort();
 function createWindow() {
-  Menu.setApplicationMenu(null);
   const window = new BrowserWindow({
     width: 1200,
     height: 800,

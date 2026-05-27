@@ -32,7 +32,7 @@ const getVitePort = (): string => {
 const VITE_PORT = getVitePort();
 
 function createWindow() {
-  Menu.setApplicationMenu(null); // 隐藏菜单栏
+  //Menu.setApplicationMenu(null); // 隐藏菜单栏
   const window = new BrowserWindow({
     width: 1200,
     height: 800,
