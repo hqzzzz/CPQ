@@ -445,6 +445,17 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ isOpen, onClose, pr
                         </div>
                     </div>
 
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">规格参数</label>
+                        <input 
+                            type="text" 
+                            className="w-full p-2 border border-slate-300 rounded-lg"
+                            value={formData.specifications || ''}
+                            onChange={e => setFormData({...formData, specifications: e.target.value})}
+                        />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">产品分类 (业务分组)</label>
@@ -539,15 +550,7 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ isOpen, onClose, pr
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">规格参数</label>
-                        <input 
-                            type="text" 
-                            className="w-full p-2 border border-slate-300 rounded-lg"
-                            value={formData.specifications || ''}
-                            onChange={e => setFormData({...formData, specifications: e.target.value})}
-                        />
-                    </div>
+                
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -669,35 +672,37 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ isOpen, onClose, pr
                             <button onClick={handleAddBomItem} disabled={!newBomItemId} className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50"><Plus className="w-5 h-5" /></button>
                         </div>
                         <div className="border border-slate-200 rounded-lg overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-50 border-b border-slate-200">
-                                    <tr>
-                                        <th className="px-4 py-2 text-slate-500 font-medium">组件名称</th>
-                                        <th className="px-4 py-2 text-slate-500 font-medium text-center">数量</th>
-                                        {canViewCost && <th className="px-4 py-2 text-slate-500 font-medium text-right">小计</th>}
-                                        <th className="w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {bomItems.map(item => {
-                                        const product = products.find(p => p.id === item.productId);
-                                        if (!product) return null;
-                                        return (
-                                            <tr key={item.id} className="hover:bg-slate-50">
-                                                <td className="px-4 py-3">{product.name}</td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <input type="number" min="1" className="w-20 p-1 border border-slate-300 rounded text-center text-sm" value={item.quantity} onChange={(e) => handleUpdateBomItemQty(item.id, Number(e.target.value))} />
-                                                </td>
-                                                {canViewCost && <td className="px-4 py-3 text-right">¥{product.cost * item.quantity}</td>}
-                                                <td className="px-4 py-3 text-right">
-                                                    <button onClick={() => handleRemoveBomItem(item.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {bomItems.length === 0 && <tr><td colSpan={canViewCost ? 4 : 3} className="px-4 py-8 text-center text-slate-400">暂无子项</td></tr>}
-                                </tbody>
-                            </table>
+                            <div className="max-h-64 overflow-y-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                                        <tr>
+                                            <th className="px-4 py-2 text-slate-500 font-medium">组件名称</th>
+                                            <th className="px-4 py-2 text-slate-500 font-medium text-center">数量</th>
+                                            {canViewCost && <th className="px-4 py-2 text-slate-500 font-medium text-right">小计</th>}
+                                            <th className="w-10"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {bomItems.map(item => {
+                                            const product = products.find(p => p.id === item.productId);
+                                            if (!product) return null;
+                                            return (
+                                                <tr key={item.id} className="hover:bg-slate-50">
+                                                    <td className="px-4 py-3">{product.name}</td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <input type="number" min="1" className="w-20 p-1 border border-slate-300 rounded text-center text-sm" value={item.quantity} onChange={(e) => handleUpdateBomItemQty(item.id, Number(e.target.value))} />
+                                                    </td>
+                                                    {canViewCost && <td className="px-4 py-3 text-right">¥{product.cost * item.quantity}</td>}
+                                                    <td className="px-4 py-3 text-right">
+                                                        <button onClick={() => handleRemoveBomItem(item.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {bomItems.length === 0 && <tr><td colSpan={canViewCost ? 4 : 3} className="px-4 py-8 text-center text-slate-400">暂无子项</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
